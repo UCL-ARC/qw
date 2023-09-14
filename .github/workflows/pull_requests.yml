@@ -1,0 +1,35 @@
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+
+
+env:
+  # Adding in token so we can use gh CLI
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  issue-parsing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: parse from github event
+        run: |
+          echo ${TITLE} \
+          && echo ${BODY} \
+          && echo ${NUMBER} \
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          NUMBER: ${{ github.event.issue.number }}
+      - name: join assignees
+        run: |
+          # Using name for full name, can also use login for github login
+          gh issue view ${{ github.event.issue.html_url }} \
+                      --json "assignees" --jq '.assignees | map(.name) | join(", ")'
+      - name: join labels
+        run: |
+          gh issue view ${{ github.event.issue.html_url }} \
+                      --json "labels" --jq '.labels | map(.name) | join(", ")'
+      - name: label check
+        if: ${{ contains(github.event.issue.labels.*.name, 'enhancement') }}
+        run : |
+          echo "enhancement label found"
