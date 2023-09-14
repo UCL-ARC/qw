@@ -17,19 +17,19 @@ jobs:
           && echo ${BODY} \
           && echo ${NUMBER} \
         env:
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
-          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          NUMBER: ${{ github.event.pull_request.number }}
       - name: join assignees
         run: |
           # Using name for full name, can also use login for github login
-          gh issue view ${{ github.event.issue.html_url }} \
+          gh pr view ${{ github.event.pull_request.html_url }} \
                       --json "assignees" --jq '.assignees | map(.name) | join(", ")'
       - name: join labels
         run: |
-          gh issue view ${{ github.event.issue.html_url }} \
+          gh pr view ${{ github.event.pull_request.html_url }} \
                       --json "labels" --jq '.labels | map(.name) | join(", ")'
       - name: label check
-        if: ${{ contains(github.event.issue.labels.*.name, 'enhancement') }}
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'enhancement') }}
         run : |
           echo "enhancement label found"
