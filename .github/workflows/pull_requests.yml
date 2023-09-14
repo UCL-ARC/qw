@@ -32,3 +32,21 @@ jobs:
         if: ${{ contains(github.event.pull_request.labels.*.name, 'enhancement') }}
         run : |
           echo "enhancement label found"
+      - name: linked issues
+        run : |
+          gh api graphql \
+          -F owner='${{ github.repository_owner }}' \
+          -F repo=''${{ github.repository }}'' \
+          -F pr=${{ github.event.pull_request.number }} \
+          -f query='
+          query ($owner: String!, $repo: String!, $pr: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                          pullRequest(number: $pr) {
+                                  closingIssuesReferences(first: 100) {
+                                          nodes {
+                                                  number
+                                          }
+                                  }
+                          }
+                  }
+          }'  --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].number'

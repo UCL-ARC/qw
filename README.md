@@ -13,10 +13,10 @@ Issues
 
 PRs
 
-- [ ] Title
-- [ ] First comment
-- [ ] Assignee
-- [ ] Reviewed by
-- [ ] Label
+- [x] Title
+- [x] First comment
+- [x] Assignee(s)
+- [ ] Reviewed by (presumably only the person who approved)
+- [x] Label
 - [ ] [Linked Issues](https://github.com/cli/cli/discussions/7097#discussioncomment-5229031) 
 
