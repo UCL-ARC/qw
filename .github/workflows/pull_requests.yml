@@ -49,4 +49,4 @@ jobs:
                                   }
                           }
                   }
-          }'  --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].number'
+          }'  --jq '.data.repository.pullRequest.closingIssuesReferences.nodes | map(.number) | join (", ")'
