@@ -18,5 +18,5 @@ PRs
 - [ ] Assignee
 - [ ] Reviewed by
 - [ ] Label
-- [ ] Linked Issues
+- [ ] [Linked Issues](https://github.com/cli/cli/discussions/7097#discussioncomment-5229031) 
 

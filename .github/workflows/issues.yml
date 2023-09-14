@@ -29,6 +29,6 @@ jobs:
           gh issue view ${{ github.event.issue.html_url }} \
                       --json "labels" --jq '.labels | map(.name) | join(", ")'
       - name: label check
-        if: ${{ github.event.issue.label.name == 'enhancement' }}
+        if: ${{ github.event.issue.labels.name == 'enhancement' }}
         run : |
           echo "enhancement label found"
