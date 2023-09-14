@@ -36,7 +36,7 @@ jobs:
         run : |
           gh api graphql \
           -F owner='${{ github.repository_owner }}' \
-          -F repo=''${{ github.repository }}'' \
+          -F repo=''${{ github.event.repository.name }}'' \
           -F pr=${{ github.event.pull_request.number }} \
           -f query='
           query ($owner: String!, $repo: String!, $pr: Int!) {
