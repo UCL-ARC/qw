@@ -23,7 +23,8 @@ jobs:
       - name: join assignees
         run: |
           gh issue view ${{ github.event.issue.html_url }} \
-                      --json "assignees" --jq '.assignees | map(.login) | join(", ")'
+                      # Using name for full name, can also use login for github login
+                      --json "assignees" --jq '.assignees | map(.name) | join(", ")'
       - name: join labels
         run: |
           gh issue view ${{ github.event.issue.html_url }} \
