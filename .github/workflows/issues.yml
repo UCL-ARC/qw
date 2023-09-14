@@ -11,7 +11,7 @@ jobs:
   issue-parsing:
     runs-on: ubuntu-latest
     steps:
-      - name: parse from event
+      - name: parse from github event
         run: |
           echo ${TITLE} \
           && echo ${BODY} \
@@ -20,10 +20,14 @@ jobs:
           TITLE: ${{ github.event.issue.title }}
           BODY: ${{ github.event.issue.body }}
           NUMBER: ${{ github.event.issue.number }}
-      - name: assignees
+      - name: join assignees
         run: |
           gh issue view ${{ github.event.issue.html_url }} \
                       --json "assignees" --jq '.assignees | map(.login) | join(", ")'
+      - name: join labels
+        run: |
+          gh issue view ${{ github.event.issue.html_url }} \
+                      --json "labels" --jq '.labels | map(.name) | join(", ")'
       - name: label check
         if: ${{ github.event.issue.label.name == 'enhancement' }}
         run : |
