@@ -32,8 +32,9 @@ jobs:
         if: ${{ contains(github.event.pull_request.labels.*.name, 'enhancement') }}
         run : |
           echo "enhancement label found"
-      - name: linked issues
+      - name: join linked issues
         run : |
+          # taken from https://github.com/cli/cli/discussions/7097#discussioncomment-5229031
           gh api graphql \
           -F owner='${{ github.repository_owner }}' \
           -F repo='${{ github.event.repository.name }}' \
