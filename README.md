@@ -9,7 +9,7 @@ Issues
 - [x] First comment
 - [x] PR number
 - [x] Assignee(s)
-- [ ] Label
+- [x] Label
 
 PRs
 
