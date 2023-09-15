@@ -51,3 +51,10 @@ jobs:
                           }
                   }
           }'  --jq '.data.repository.pullRequest.closingIssuesReferences.nodes | map(.number) | join (", ")'
+      - name: Join approving reviewers
+        run: |
+          # filter to only yes or no approvals, then find the most recent review by user
+          # keep only approved reviews and then join the author logins - would need to later map logins to names but seems fine 
+          gh pr view ${{ github.event.pull_request.html_url }} \
+            --json "reviews" --jq '.reviews[] | select(.state==("DISMISSED", "APPROVED"))' \
+            | jq --slurp 'group_by(.author.login) | map(max_by(.submittedAt)) | map(select(.state=="APPROVED")) | map(.author.login) | join(", ")'
