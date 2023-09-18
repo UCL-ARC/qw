@@ -2,7 +2,6 @@ on:
   issues:
     types: [opened, reopened, edited]
 
-
 env:
   # Adding in token so we can use gh CLI
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -31,5 +30,5 @@ jobs:
                       --json "labels" --jq '.labels | map(.name) | join(", ")'
       - name: label check
         if: ${{ contains(github.event.issue.labels.*.name, 'enhancement') }}
-        run : |
+        run: |
           echo "enhancement label found"

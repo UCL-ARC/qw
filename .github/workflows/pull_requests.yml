@@ -1,7 +1,6 @@
 on:
   pull_request:
 
-
 env:
   # Adding in token so we can use gh CLI
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -30,10 +29,10 @@ jobs:
                       --json "labels" --jq '.labels | map(.name) | join(", ")'
       - name: label check
         if: ${{ contains(github.event.pull_request.labels.*.name, 'enhancement') }}
-        run : |
+        run: |
           echo "enhancement label found"
       - name: join linked issues
-        run : |
+        run: |
           # taken from https://github.com/cli/cli/discussions/7097#discussioncomment-5229031
           gh api graphql \
           -F owner='${{ github.repository_owner }}' \
@@ -54,7 +53,7 @@ jobs:
       - name: Join approving reviewers
         run: |
           # filter to only yes or no approvals, then find the most recent review by user
-          # keep only approved reviews and then join the author logins - would need to later map logins to names but seems fine 
+          # keep only approved reviews and then join the author logins - would need to later map logins to names but seems fine
           gh pr view ${{ github.event.pull_request.html_url }} \
             --json "reviews" --jq '.reviews[] | select(.state==("DISMISSED", "APPROVED"))' \
             | jq --slurp 'group_by(.author.login) | map(max_by(.submittedAt)) | map(select(.state=="APPROVED")) | map(.author.login) | join(", ")'
