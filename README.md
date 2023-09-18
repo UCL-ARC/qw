@@ -26,4 +26,4 @@ PRs
 
 ## Prototyping of QW tool
 
-Messing around with project in [qw/README.md](qw/README.md)
+Messing around with python in [src](src)

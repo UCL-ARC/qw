@@ -17,8 +17,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "typer==0.9.0"
 ]
-description = "Quality Workflow management helper. Automating traceability matrices[D"
+description = "Quality Workflow management helper. Automating traceability matrices"
 dynamic = [
     "version",
 ]
