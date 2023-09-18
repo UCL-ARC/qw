@@ -19,7 +19,11 @@ PRs
 - [x] Title
 - [x] First comment
 - [x] Assignee(s)
-- [ ] Users who's final reviews were APPROVED
+- [x] Users who's final reviews were APPROVED
 - [x] Label
 - [x] [Linked Issues](https://github.com/cli/cli/discussions/7097#discussioncomment-5229031) 
 
+
+## Prototyping of QW tool
+
+Messing around with project in [qw/README.md](qw/README.md)
