@@ -160,3 +160,6 @@ cython_debug/
 #.idea/
 
 /src/qw/_version.py
+
+# Our stuff
+.qw/

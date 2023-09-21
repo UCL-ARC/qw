@@ -17,8 +17,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "typer==0.9.0",
+    "github3-py==4.0.1",
+    "gitpython==3.1.36",
+    "keyring==24.2.0",
     "loguru==0.7.2",
+    "typer==0.9.0",
 ]
 description = "Quality Workflow management helper. Automating traceability matrices"
 dynamic = [
@@ -40,10 +43,12 @@ optional-dependencies = {dev = [
 readme = "README.md"
 requires-python = ">=3.11"
 license.file = "LICENCE.md"
-urls.homepage = "https://github.com/UCL-ARC/qw"
 
 [project.scripts]
 qw = "qw.cli:app"
+
+[project.urls]
+homepage = "https://github.com/UCL-ARC/qw"
 
 [tool.coverage]
 report = {skip_covered = true, sort = "cover"}
@@ -62,6 +67,30 @@ plugins = [
     "pydantic.mypy",
 ]
 
+[tool.poetry]
+authors = ["Stef Piatek", "Tim Band"]
+description = "Tool to help regulatory compliance for projects hosted on github"
+name = "qw"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+github3-py = "^4.0.1"
+gitpython = "^3.1.36"
+keyring = "^24.2.0"
+loguru = "^0.7.2"
+python = "^3.8"
+typer = "^0.9.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.9.1"
+build = "^1.0.3"
+mypy = "^1.5.1"
+pre-commit = "^3.4.0"
+ruff = "^0.0.290"
+tox = "^4.11.3"
+twine = "^4.0.2"
+
 [tool.pytest.ini_options]
 addopts = "--color=yes -v"
 testpaths = [
@@ -76,9 +105,6 @@ ignore = [
     "D212", # multi-line-summary-first-line
     "D417", # argument description in docstring (unreliable)
 ]
-per-file-ignores = {"test_*" = [
-    "S101",
-]}
 select = [
     "A",
     "ARG",
@@ -128,6 +154,15 @@ mccabe.max-complexity = 18
 pep8-naming.classmethod-decorators = [
     "classmethod",
     "pydantic.validator",
+]
+
+[tool.ruff.per-file-ignores]
+"cli.py" = [
+    "FBT002", # default boolean function parameters (needed in Typer)
+    "UP007", # Use X | None not Optional[X] (doesn't work in Typer)
+]
+"test_*" = [
+    "S101",
 ]
 
 [tool.setuptools_scm]
