@@ -160,3 +160,9 @@ cython_debug/
 #.idea/
 
 /src/qw/_version.py
+
+# poetry
+poetry.lock
+
+# Our stuff
+.qw/

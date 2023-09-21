@@ -1,3 +1,17 @@
+[tool.poetry]
+name = "qw"
+version = "0.1.0"
+description = "Tool to help regulatory compliance for projects hosted on github"
+authors = ["Tim Band", "Stef Piatek"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+typer = "^0.9.0"
+keyring = "^24.2.0"
+github3-py = "^4.0.1"
+gitpython = "^3.1.36"
+
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
@@ -17,7 +31,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "typer==0.9.0",
+    "github3-py=4.0.1",
+    "gitpython==3.1.36",
+    "keyring=24.2.0",
+    "typer==0.9.0"
 ]
 description = "Quality Workflow management helper. Automating traceability matrices"
 dynamic = [
