@@ -1,17 +1,3 @@
-[tool.poetry]
-name = "qw"
-version = "0.1.0"
-description = "Tool to help regulatory compliance for projects hosted on github"
-authors = ["Tim Band", "Stef Piatek"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.8"
-typer = "^0.9.0"
-keyring = "^24.2.0"
-github3-py = "^4.0.1"
-gitpython = "^3.1.36"
-
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
@@ -31,11 +17,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "github3-py=4.0.1",
+    "github3-py==4.0.1",
     "gitpython==3.1.36",
-    "keyring=24.2.0",
+    "keyring==24.2.0",
     "loguru==0.7.2",
-    "typer==0.9.0"
+    "typer==0.9.0",
 ]
 description = "Quality Workflow management helper. Automating traceability matrices"
 dynamic = [
@@ -78,6 +64,29 @@ plugins = [
     "numpy.typing.mypy_plugin",
     "pydantic.mypy",
 ]
+
+[tool.poetry]
+authors = ["Stef Piatek", "Tim Band"]
+description = "Tool to help regulatory compliance for projects hosted on github"
+name = "qw"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+github3-py = "^4.0.1"
+gitpython = "^3.1.36"
+keyring = "^24.2.0"
+python = "^3.8"
+typer = "^0.9.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.9.1"
+build = "^1.0.3"
+mypy = "^1.5.1"
+pre-commit = "^3.4.0"
+ruff = "^0.0.290"
+tox = "^4.11.3"
+twine = "^4.0.2"
 
 [tool.pytest.ini_options]
 addopts = "--color=yes -v"
