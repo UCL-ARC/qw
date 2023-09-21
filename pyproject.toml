@@ -105,9 +105,6 @@ ignore = [
     "D212", # multi-line-summary-first-line
     "D417", # argument description in docstring (unreliable)
 ]
-per-file-ignores = {"test_*" = [
-    "S101",
-]}
 select = [
     "A",
     "ARG",
@@ -157,6 +154,15 @@ mccabe.max-complexity = 18
 pep8-naming.classmethod-decorators = [
     "classmethod",
     "pydantic.validator",
+]
+
+[tool.ruff.per-file-ignores]
+"cli.py" = [
+    "FBT002", # default boolean function parameters (needed in Typer)
+    "UP007", # Use X | None not Optional[X] (doesn't work in Typer)
+]
+"test_*" = [
+    "S101",
 ]
 
 [tool.setuptools_scm]

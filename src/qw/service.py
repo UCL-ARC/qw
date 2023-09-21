@@ -1,65 +1,77 @@
 """
+Abstract git hosting service.
+
 Abstract Service (such as github or gitlab) in which
 the project managment interest resides.
 """
 
-from enum import Enum
-import git
 import json
-import os
+import pathlib
+from enum import Enum
+
+import git
 
 from qw.base import QwError
 
+
 class Service(str, Enum):
-    test = "test"
-    github = "github"
-    gitlab = "gitlab"
+    """Git hosting service identifiers."""
+
+    TEST = "test"
+    GITHUB = "github"
+    GITLAB = "gitlab"
 
 
-def find_aunt_dir(name: str) -> str:
+def find_aunt_dir(name: str, error_msg: str) -> pathlib.Path:
     """
+    Find a directory within this or some ancestor directory.
+
     Returns the directory with the required name in the closest
     ancestor of the current working directory, or None if there is no
     such directory (the daughter of an ancestor is a great^n aunt).
     """
-    d = os.getcwd()
+    d = pathlib.Path.cwd()
     while True:
-        p = os.path.join(d, name)
-        if os.path.isdir(p):
+        p = d / name
+        if p.is_dir():
             return p
-        (d, rej) = os.path.split(d)
-        if rej == "":
-            return None
+        if d.name == "":
+            raise QwError(
+                error_msg,
+            )
+        d = d.parent
 
 
-def find_conf_dir() -> str:
-    """Returns the .qw directory of the project we are in."""
-    d = find_aunt_dir(".qw")
-    if d is None:
+def find_conf_dir() -> pathlib.Path:
+    """Return the .qw directory of the project we are in."""
+    return find_aunt_dir(
+        ".qw",
+        "Could not find a configuration directory, please initialize with `qw init`",
+    )
+
+
+def get_configuration() -> dict:
+    """Get the configuration (as a dict) from the .qw/conf.json file."""
+    conf_file_name = find_conf_dir() / "conf.json"
+    if not conf_file_name.is_file():
         msg = (
-            "Could not find a configuration directory, please initialize with `qw init`"
+            "Could not find a configuration directory, please"
+            " initialize with `qw init`"
         )
         raise QwError(
             msg,
         )
-    return d
-
-
-def get_configuration() -> object:
-    conf_file_name = os.path.join(find_conf_dir(), "conf.json")
-    if not os.path.isfile(conf_file_name):
-        msg = (
-            "Could not find a configuration directory, please initialize with `qw init`"
-        )
-        raise QwError(
-            msg,
-        )
-    with open(conf_file_name) as conf:
+    with conf_file_name.open() as conf:
         return json.load(conf)
 
 
 def get_repo_url(repo: git.Repo, name: str) -> str:
-    """Finds the URL of the repo given the --repo=<> command-line option."""
+    """
+    Get the repo URL.
+
+    Find the URL of the repo given the --repo=<> command-line
+    option and the git remotes configured.
+    """
     if name is None:
         for remote_name in ["upstream", "origin"]:
             if remote_name in repo.remotes:
@@ -79,51 +91,103 @@ def get_repo_url(repo: git.Repo, name: str) -> str:
     )
 
 
-def remote_address_to_host_user_repo(address: str) -> str:
-    bits = address.split("://", 1)
-    if len(bits) == 2:
-        host_user_repo = bits[1].split("/", 2)
-        if len(host_user_repo) != 3:
+def splitstr(string, sep, count) -> tuple | None:
+    """
+    Split like str.split().
+
+    Returns none if `count` components were not found
+    """
+    r = string.split(sep, count - 1)
+    if len(r) == count:
+        return r
+    return None
+
+
+def remote_address_to_host_user_repo(
+    address: str,
+) -> tuple[str, str, str] | None:
+    """
+    Get (host, user, reponame) triple from the remote address.
+
+    Takes the remote URL (such as git@github.com:me/my_repo)
+    and returns the interesting components of it
+    (such as ("github.com", "me", "my_repo")).
+    """
+    bits = splitstr(address, "://", 2)
+    if bits is not None:
+        host_user_repo = splitstr(bits[1], "/", 3)
+        if host_user_repo is None:
             return None
         (host, user, repo) = host_user_repo
     else:
-        host_userrepo = address.split(":", 1)
-        if len(host_userrepo) != 2:
+        host_userrepo = splitstr(address, ":", 2)
+        if host_userrepo is None:
             return None
         (host, userrepo) = host_userrepo
-        user_repo = userrepo.split("/", 1)
-        if len(user_repo) != 2:
+        user_repo = splitstr(userrepo, "/", 2)
+        if user_repo is None:
             return None
         (user, repo) = user_repo
-    uh = host.split("@", 1)
-    if len(uh) == 2:
+    uh = splitstr(host, "@", 2)
+    if uh is not None:
         host = uh[1]
     return (host, user, repo)
 
 
 def hostname_to_service(hostname: str) -> str:
+    """
+    Guesses the service type from the host name.
+
+    From a hostname (such as gitlab.mydomain.com)
+    returns the service it looks like. Raises an
+    exception if it cannot work it out (in which)
+    case the user should specify it explicitly.
+    """
     if hostname.startswith("github."):
-        return Service.github
+        return Service.GITHUB
     if hostname.startswith("gitlab."):
-        return Service.gitlab
-    return None
+        return Service.GITLAB
+    msg = f"'{hostname}' is not a service I know about!"
+    raise QwError(
+        msg,
+    )
 
 
 class Issue:
+    """
+    Project management Issue.
+
+    For example a bug report, user need, or
+    design input.
+    """
+
     def number(self) -> int:
+        """
+        Get issue number.
+
+        The identifying number that the users associate with this
+        issue.
+        """
         raise NotImplementedError
 
     def title(self) -> str:
+        """
+        Get title.
+
+        The title of the issue, such as is visible in issue lists.
+        """
         raise NotImplementedError
 
 
 class GitService:
+    """A service hosting a git repository and project management tools."""
+
     def __init__(self, conf) -> None:
+        """Initialize a service with configuration."""
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
 
     def get_issue(self, number: int):
-        """Gets the numbered issue."""
+        """Get the numbered issue."""
         raise NotImplementedError
-
