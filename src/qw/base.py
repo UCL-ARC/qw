@@ -1,0 +1,2 @@
+class QwError(RuntimeError):
+    pass
