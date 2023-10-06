@@ -24,6 +24,7 @@ def text_under_heading(text: str, heading: str) -> str:
         sub_heading_lines.append(line)
 
     if not found_heading:
-        QwError(f"Could not find the heading: '### {heading}'")
+        msg = f"Could not find the heading: '### {heading}'"
+        raise QwError(msg)
 
     return "\n".join(sub_heading_lines).strip()
