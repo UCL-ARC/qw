@@ -1,16 +1,29 @@
 """Prototyping of extracting structured information from markdown."""
+import re
 
-from markdown import markdown
-from parsel import Selector
+from qw.base import QwError
 
 
 def text_under_heading(text: str, heading: str) -> str:
-    """Extract text elements under a specific heading."""
-    html = markdown(text)
-    selector = Selector(html)
-    header = selector.xpath('//h3[contains(text(), "What happened?")]')
-    if not header:
-        msg = f"Header '{heading}' not found"
-        RuntimeError(msg)
+    """Extract all markdown after a h3 heading, until the next h3 heading."""
+    heading_pattern = re.compile(f"^### +{re.escape(heading)}")
+    sub_heading_lines = []
 
-    return header.xpath("following-sibling::p/text()").get().strip()
+    found_heading = False
+    for line in text.split("\n"):
+        # skip all rows before the header
+        if not found_heading:
+            if not heading_pattern.match(line):
+                continue
+            # have now found the header go to next line and stop skipping lines that don't match the header
+            found_heading = True
+            continue
+        if line.startswith("### "):
+            # found the next header, exit
+            break
+        sub_heading_lines.append(line)
+
+    if not found_heading:
+        QwError(f"Could not find the heading: '### {heading}'")
+
+    return "\n".join(sub_heading_lines).strip()

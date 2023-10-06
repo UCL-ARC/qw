@@ -21,8 +21,6 @@ dependencies = [
     "gitpython==3.1.36",
     "keyring==24.2.0",
     "loguru==0.7.2",
-    "markdown==3.4.4",
-    "parsel==1.8.1",
     "typer==0.9.0",
 ]
 description = "Quality Workflow management helper. Automating traceability matrices"
