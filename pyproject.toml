@@ -67,7 +67,7 @@ plugins = [
     "pydantic.mypy",
 ]
 # Allow union syntax for optionals
-python_version = "3.10"
+python_version = "3.11"
 
 [tool.poetry]
 authors = ["Stef Piatek", "Tim Band"]
