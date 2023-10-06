@@ -66,6 +66,8 @@ plugins = [
     "numpy.typing.mypy_plugin",
     "pydantic.mypy",
 ]
+# Allow union syntax for optionals
+python_version = "3.10"
 
 [tool.poetry]
 authors = ["Stef Piatek", "Tim Band"]
@@ -105,6 +107,7 @@ ignore = [
     "D212", # multi-line-summary-first-line
     "D417", # argument description in docstring (unreliable)
 ]
+line-length = 120
 select = [
     "A",
     "ARG",
