@@ -7,7 +7,7 @@ requires = [
 
 [project]
 authors = [
-    {email = "temp@gmail.com", name = "UCL ARC"},
+    {email = "ARC.Collaborations@ucl.ac.uk", name = "UCL ARC"},
 ]
 classifiers = [
     "Operating System :: POSIX",
