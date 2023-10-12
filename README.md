@@ -105,7 +105,7 @@ You can add extra components to the configuration using qw:
 qw config add-service --name="Drug dosage" --short-code=D
 ```
 
-> INFO: Added "Drug dosage (D)" to local compenents, please commit this file
+> INFO: Added "Drug dosage (D)" to local components, please commit this file
 > INFO: Added tag "qw-component-d" to github
 
 ## Configuration using Gitlab
