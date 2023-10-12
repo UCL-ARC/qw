@@ -172,7 +172,7 @@ QW uses existing issues and pull requests to track the different design and deve
     acceptance_test_user_entry.docx | 2
   - The development team may want to write a script that allows them to get the names of all tests run and ensure that automated tests listed in the csv still exist, bonus points if you make this an automated test that fails if a test doesn't exist
   - Adding the manual verification test scripts to version control is ideal, but you may also list the name
-  - the QW CI task will can fail if:
+  - the QW CI task will fail if:
     - No parent issue is given for a PR
     - A test doesn't exist which is mapped to the parent issue
     - The structure of the `test_mapping.csv` has been altered, or `;` has not been used to separate targeted issues
