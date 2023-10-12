@@ -214,7 +214,7 @@ The `qw freeze` function is used to save the current state of the qw items in gi
 This should be run regularly, which will update or add to the `.qw` directory.
 These changes should be committed and added to the main development branch by a pull request as a [Non QW item](#non-qw-items).
 
-```
+```shell
 qw freeze
 ```
 
@@ -264,7 +264,7 @@ Running this will:
 - Create word documents based on the QW template for export
 - [name=Stef] Optionally? Create an html page that shows a burndown graph for each of the QW item types, showing the number completed and outstanding over time. Would this be useful?
 
-```
+```shell
 qw release qms_docs
 ```
 
