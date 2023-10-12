@@ -175,7 +175,7 @@ QW uses existing issues and pull requests to track the different design and deve
   - the QW CI task will can fail if:
     - No parent issue is given for a PR
     - A test doesn't exist which is mapped to the parent issue
-    - The structure of the `test_mapping.csv` has been altered, or `;` has not been used to separate targetted issues
+    - The structure of the `test_mapping.csv` has been altered, or `;` has not been used to separate targeted issues
     - A test name is duplicated in `test_mapping.csv`
 
 ### Design validation
