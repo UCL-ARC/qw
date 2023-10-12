@@ -147,13 +147,11 @@ QW uses existing issues and pull requests to track the different design and deve
     - User maintenance
     - Regulatory
 - Hit `Submit new issue` and theissue will be rendered like this:
-  ![](https://hackmd.io/_uploads/B1m9SkVZ6.png)
-
+  ![](https://hackmd.io/_uploads/H1-xiDBWT.png)
   - Note that the `design-component-d` has been added as "Drug dosage" was added as a component type with a short code of `D`.
-
 - The first comment of this issue will be used by `qw` for tracking, but you can edit anything manually after the `Other information` header and this will not interfere with the tool
 - The parent issue will have been updated with this issue number
-  ![](https://hackmd.io/_uploads/HJODNgiya.png)
+  ![](https://hackmd.io/_uploads/S1OvqDrW6.png)
 
 ### Design outputs and design verification
 
