@@ -223,7 +223,7 @@ An example incrementing a tag upon update:
 > Running WQ freeze
 > Found 47 QW items
 >
-> INFO: Design Input https://github.com/stefpiatek/dummy-medical-software/issues/6 has a been updated since last saved
+> INFO: Design Input https://github.com/stefpiatek/dummy-medical-software/issues/6 has been updated since last saved
 >
 > Previous data:
 >
