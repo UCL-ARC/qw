@@ -5,6 +5,7 @@ from typing import Self
 
 from qw.base import QwError
 from qw.md import text_under_heading
+from src.qw.design_stages.stages import DesignStage
 
 
 class DesignInput:
@@ -17,6 +18,7 @@ class DesignInput:
         self.title: str | None = None
         self.description: str | None = None
         self.user_need: str | None = None
+        self.stage = DesignStage.INPUT
 
     @classmethod
     def from_markdown(cls, title: str, markdown: str) -> Self:
@@ -45,6 +47,8 @@ class DesignInput:
         instance = cls()
         json_data = json.loads(json_str)
         for key, value in json_data.items():
+            if key == "stage":
+                continue
             instance.__dict__[key] = value
 
         return instance

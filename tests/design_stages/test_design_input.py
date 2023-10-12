@@ -3,6 +3,7 @@ import pytest
 
 from qw.base import QwError
 from qw.design_stages.input import DesignInput
+from src.qw.design_stages.stages import DesignStage
 
 
 def test_serialise() -> None:
@@ -20,7 +21,7 @@ def test_serialise() -> None:
 
     assert (
         design_input.to_json()
-        == '{"title": "qw_title", "description": "qw_description", "user_need": null}'
+        == '{"title": "qw_title", "description": "qw_description", "user_need": null, "stage": "design-input"}'
     )
 
 
@@ -32,15 +33,14 @@ def test_deserialisation() -> None:
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    json_dump = (
-        '{"title": "qw_title", "description": "qw_description", "user_need": null}'
-    )
+    json_dump = '{"title": "qw_title", "description": "qw_description", "user_need": null , "stage": "design-input"}'
 
     design_input = DesignInput.from_json(json_dump)
     design_input._validate_required_fields()
 
     assert design_input.title == "qw_title"
     assert design_input.description == "qw_description"
+    assert design_input.stage == DesignStage.INPUT
 
 
 def test_required_fields() -> None:
