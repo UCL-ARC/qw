@@ -158,7 +158,7 @@ QW uses existing issues and pull requests to track the different design and deve
 - Create a pull request from github and follow the instructions on the template
   ![](https://hackmd.io/_uploads/BkYpd7ikp.png)
   - If the `qw-ignore` tag is added, then this PR does is not related to the medical device aspect of the software
-- In this example, the pull request contains the design outputs and design verification. These can be added seperately, where the design verification would also be linked to the design input.
+- In this example, the pull request contains the design outputs and design verification. These can be added separately, where the design verification would also be linked to the design input.
   ![](https://hackmd.io/_uploads/ryp39Xj1a.png)
 - QW will check that the chain of design items are able to be processed and fully signed off,
   when this is successful the github action will pass
