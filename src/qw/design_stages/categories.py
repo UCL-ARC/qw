@@ -6,7 +6,7 @@ class DesignStage(str, Enum):
     """Git hosting service identifiers."""
 
     NEED = "user-need"
-    INPUT = "design-input"
+    REQUIREMENT = "requirement"
     OUTPUT = "design-output"
     VERIFICATION = "verification"
     VALIDATION = "validation"

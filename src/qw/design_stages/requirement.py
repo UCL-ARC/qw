@@ -1,4 +1,4 @@
-"""Design inputs and any specific funcionality."""
+"""Design requirement and any specific functionality."""
 import json
 from copy import copy
 from typing import Self
@@ -8,8 +8,8 @@ from qw.md import text_under_heading
 from src.qw.design_stages.categories import DesignStage, RemoteItemType
 
 
-class DesignInput:
-    """Design Input."""
+class Requirement:
+    """Requirement."""
 
     not_required_fields = frozenset(["user_need"])
 
@@ -20,17 +20,17 @@ class DesignInput:
         self.user_need: str | None = None
         self.internal_id: int | None = None
         self.remote_item_type = RemoteItemType.ISSUE
-        self.stage = DesignStage.INPUT
+        self.stage = DesignStage.REQUIREMENT
 
     @classmethod
     def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:
         """
-        Create design input from Markdown data.
+        Create requirement from Markdown data.
 
-        :param title: title of the design input
-        :param internal_id: Internal ID of the design input, e.g. GitHub id
+        :param title: title of the requirement
+        :param internal_id: Internal ID of the requirement, e.g. GitHub id
         :param markdown: Markdown text within the issue
-        :return: Design Input instance
+        :return: Requirement instance
         """
         instance = cls()
 
@@ -46,7 +46,7 @@ class DesignInput:
         Build json from json string.
 
         :param json_str: json string representation
-        :return: Design Input instance.
+        :return: Requirement instance.
         """
         instance = cls()
         json_data = json.loads(json_str)
