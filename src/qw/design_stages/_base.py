@@ -62,6 +62,29 @@ class DesignBase:
 
         return instance
 
+    def diff(self, other: Self) -> dict[str, dict[str, str]]:
+        """
+        Compare the data of each field with another instance,  returning the fields with differences only.
+
+        :param other: Another instance of the same class
+        :raises ValueError: if other is not the same class as self.
+        :return: A dictionary with each field that was different, with the `self` and `other` string values.
+        """
+        if not isinstance(other, type(self)):
+            msg = "Instances must be of the same class type."
+            raise ValueError(msg)
+
+        output_fields = {}
+        for field_name in self.__dict__:
+            self_data = getattr(self, field_name)
+            other_data = getattr(other, field_name)
+
+            if self_data != other_data:
+                output_fields[field_name] = {"self": str(self_data)}
+                output_fields[field_name]["other"] = str(other_data)
+
+        return output_fields
+
     @classmethod
     @abstractmethod
     def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:

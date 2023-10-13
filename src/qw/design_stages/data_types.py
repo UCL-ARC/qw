@@ -7,7 +7,7 @@ from src.qw.design_stages.categories import DesignStage, RemoteItemType
 
 
 class Requirement(DesignBase):
-    """Requirement."""
+    """Requirement Design stage."""
 
     not_required_fields = frozenset(["user_need"])
 

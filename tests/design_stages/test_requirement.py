@@ -1,4 +1,5 @@
 """Tests for requirement functionality."""
+import copy
 import json
 
 import pytest
@@ -10,10 +11,10 @@ from src.qw.design_stages.categories import DesignStage
 
 @pytest.fixture()
 def json_dump():
-    """JSON dump of requirement."""
+    """JSON dump of minimal requirement."""
     json_data = {
         "title": "qw_title",
-        "description": "qw_description",
+        "description": "qw_description\n\nover\nlines",
         "internal_id": 1,
         "remote_item_type": "issue",
         "stage": "requirement",
@@ -22,7 +23,18 @@ def json_dump():
     return json.dumps(json_data)
 
 
-def test_serialise(json_dump) -> None:
+@pytest.fixture()
+def minimal_requirement():
+    """Python object for minimal requirement."""
+    requirement = Requirement()
+    requirement.title = "qw_title"
+    requirement.description = "qw_description\n\nover\nlines"
+    requirement.internal_id = 1
+    requirement._validate_required_fields()
+    return requirement
+
+
+def test_serialise(json_dump, minimal_requirement) -> None:
     """
     Ensure serialisation.
 
@@ -30,13 +42,7 @@ def test_serialise(json_dump) -> None:
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    requirement = Requirement()
-    requirement.title = "qw_title"
-    requirement.description = "qw_description"
-    requirement.internal_id = 1
-    requirement._validate_required_fields()
-
-    assert requirement.to_json() == json_dump
+    assert minimal_requirement.to_json() == json_dump
 
 
 def test_deserialisation(json_dump) -> None:
@@ -51,7 +57,7 @@ def test_deserialisation(json_dump) -> None:
     requirement._validate_required_fields()
 
     assert requirement.title == "qw_title"
-    assert requirement.description == "qw_description"
+    assert requirement.description == "qw_description\n\nover\nlines"
     assert requirement.internal_id == 1
     assert requirement.stage == DesignStage.REQUIREMENT
 
@@ -64,3 +70,16 @@ def test_required_fields() -> None:
     with pytest.raises(QwError) as exception_info:
         requirement._validate_required_fields()
     assert "description" in str(exception_info.value)
+
+
+def test_differences(minimal_requirement) -> None:
+    """Test that a difference can be rendered detected."""
+    original = copy.copy(minimal_requirement)
+    changed = copy.copy(minimal_requirement)
+    original.description = "qw_description\n\nover\nlines"
+    changed.description = "q_description\n\nmany lines"
+    diff = changed.diff(original)
+
+    assert diff == {
+        "description": {"self": changed.description, "other": original.description},
+    }
