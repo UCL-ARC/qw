@@ -75,14 +75,19 @@ def from_json(json_str: str) -> UserNeed | Requirement:
     Build any design stage from json.
 
     :param json_str: design stage serialised in json.
-    :raises ValueError: if other is not the same class as self.
+    :raises QwError: if the stage is unknown or has not been implemented
     :return: instance of class with the json data
     """
     json_data = json.loads(json_str)
-    stage = DesignStage(json_data["stage"])
+    msg = f"Design stage {json_data['stage']} not known, should be one of {[stage.value for stage in DesignStage]}"
+    try:
+        stage = DesignStage(json_data["stage"])
+    except ValueError as exception:
+        raise QwError(msg) from exception
+
     if stage == DesignStage.REQUIREMENT:
         return Requirement.from_json(json_str)
     if stage == DesignStage.NEED:
         return UserNeed.from_json(json_str)
-    msg = f"Design stage {json_data['stage']} not known, should be one of {[stage.value for stage in DesignStage]}"
-    raise QwError(msg)
+    not_implemented = f"{stage} not implemented"
+    raise QwError(not_implemented)
