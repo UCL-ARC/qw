@@ -5,7 +5,7 @@ from typing import Self
 
 from qw.base import QwError
 from qw.md import text_under_heading
-from src.qw.design_stages.stages import DesignStage
+from src.qw.design_stages.categories import DesignStage, RemoteItemType
 
 
 class DesignInput:
@@ -18,20 +18,24 @@ class DesignInput:
         self.title: str | None = None
         self.description: str | None = None
         self.user_need: str | None = None
+        self.internal_id: int | None = None
+        self.remote_item_type = RemoteItemType.ISSUE
         self.stage = DesignStage.INPUT
 
     @classmethod
-    def from_markdown(cls, title: str, markdown: str) -> Self:
+    def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:
         """
         Create design input from Markdown data.
 
         :param title: title of the design input
+        :param internal_id: Internal ID of the design input, e.g. GitHub id
         :param markdown: Markdown text within the issue
         :return: Design Input instance
         """
         instance = cls()
 
         instance.title = title
+        instance.internal_id = internal_id
         instance.description = text_under_heading(markdown, "Description")
         instance.user_need = text_under_heading(markdown, "Parent user need")
         return instance
@@ -48,6 +52,9 @@ class DesignInput:
         json_data = json.loads(json_str)
         for key, value in json_data.items():
             if key == "stage":
+                continue
+            if key == "remote_item_type":
+                instance.remote_item_type = RemoteItemType(value)
                 continue
             instance.__dict__[key] = value
 
