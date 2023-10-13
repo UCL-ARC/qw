@@ -1,6 +1,6 @@
 """Base class for design stages."""
 import json
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from copy import copy
 from typing import Self
 
@@ -8,7 +8,7 @@ from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
 
 
-class DesignBase:
+class DesignBase(ABC):
     """Design stage base class."""
 
     # to be overriden by child classes for specific fields that are allowed to be empty.

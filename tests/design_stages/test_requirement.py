@@ -1,40 +1,17 @@
 """Tests for requirement functionality."""
 import copy
-import json
 
 import pytest
 
 from qw.base import QwError
-from qw.design_stages.data_types import Requirement
+from qw.design_stages.main import Requirement
 from src.qw.design_stages.categories import DesignStage
 
 
-@pytest.fixture()
-def json_dump():
-    """JSON dump of minimal requirement."""
-    json_data = {
-        "title": "qw_title",
-        "description": "qw_description\n\nover\nlines",
-        "internal_id": 1,
-        "remote_item_type": "issue",
-        "stage": "requirement",
-        "user_need": None,
-    }
-    return json.dumps(json_data)
-
-
-@pytest.fixture()
-def minimal_requirement():
-    """Python object for minimal requirement."""
-    requirement = Requirement()
-    requirement.title = "qw_title"
-    requirement.description = "qw_description\n\nover\nlines"
-    requirement.internal_id = 1
-    requirement._validate_required_fields()
-    return requirement
-
-
-def test_serialise(json_dump, minimal_requirement) -> None:
+def test_serialise(
+    json_minimal_requirement: str,
+    minimal_requirement: Requirement,
+) -> None:
     """
     Ensure serialisation.
 
@@ -42,10 +19,10 @@ def test_serialise(json_dump, minimal_requirement) -> None:
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    assert minimal_requirement.to_json() == json_dump
+    assert minimal_requirement.to_json() == json_minimal_requirement
 
 
-def test_deserialisation(json_dump) -> None:
+def test_deserialisation(json_minimal_requirement: str) -> None:
     """
     Ensure deserialisation.
 
@@ -53,7 +30,7 @@ def test_deserialisation(json_dump) -> None:
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    requirement = Requirement.from_json(json_dump)
+    requirement = Requirement.from_json(json_minimal_requirement)
     requirement._validate_required_fields()
 
     assert requirement.title == "qw_title"
