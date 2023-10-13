@@ -4,7 +4,7 @@ import json
 import pytest
 
 from qw.base import QwError
-from qw.design_stages.requirement import Requirement
+from qw.design_stages.data_types import Requirement
 from src.qw.design_stages.categories import DesignStage
 
 
@@ -14,10 +14,10 @@ def json_dump():
     json_data = {
         "title": "qw_title",
         "description": "qw_description",
-        "user_need": None,
         "internal_id": 1,
         "remote_item_type": "issue",
         "stage": "requirement",
+        "user_need": None,
     }
     return json.dumps(json_data)
 
