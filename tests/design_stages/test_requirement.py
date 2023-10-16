@@ -4,8 +4,8 @@ import copy
 import pytest
 
 from qw.base import QwError
+from qw.design_stages.categories import DesignStage
 from qw.design_stages.main import Requirement
-from src.qw.design_stages.categories import DesignStage
 
 
 def test_serialise(

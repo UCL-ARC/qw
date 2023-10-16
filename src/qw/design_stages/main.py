@@ -4,8 +4,8 @@ from typing import Self
 
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
+from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.md import text_under_heading
-from src.qw.design_stages.categories import DesignStage, RemoteItemType
 
 
 class UserNeed(DesignBase):
