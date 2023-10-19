@@ -12,7 +12,7 @@ The QW allows users to track the different changes in design and development req
 
 ## Installation
 
-The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements. Otherwise may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
+The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements. Otherwise you may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
 
 For Unix:
 
