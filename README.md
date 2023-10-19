@@ -43,7 +43,7 @@ qw init --repo github.com:username/reponame --service github
 > INFO: Please commit the files after you have finished your setup
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
 
-If you have a different development flow than using the default branch, then edit the `qw` ruleset for the repository, adding extra branches to the ruleset (e.g. `develop`)
+If you have a different development flow than pull requests into main/master then edit the `qw` ruleset for the repository, adding extra branches to the ruleset (e.g. `develop`)
 
 <!--
   - [name=Stef] or do we just define what workflow they have to use? Could also give a comma separated list of branch names in the --git-service option?
