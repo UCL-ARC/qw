@@ -1,24 +1,18 @@
 # Proposed Quality Workflow (QW) user guide - release 1
 
-The Quality Workflow tool (QW) aims to help reduce the friction in creating and maintaining traceability matrices (later release could target hazards
-and risks).
+The Quality Workflow tool (QW) aims to help reduce the friction in creating and maintaining traceability matrices (later release could target hazards and risks).
 
 # Background and use-case
 
-Within medical device software there are several design and development stages that should be tracked, versioned and a traceability matrix is a
-standard way of presenting this information. The Quality Management System used in WEISS is document based, which requires substantial manual effort
-in tracking linkages, updating of versions and ensuring that all approvals are current.
+Within medical device software there are several design and development stages that should be tracked, versioned and a traceability matrix is a standard way of presenting this information. The Quality Management System used in WEISS is document based, which requires substantial manual effort in tracking linkages, updating of versions and ensuring that all approvals are current.
 
-The QW allows users to track the different changes in design and development requirements, outputs, verification and validations. These different
-stages are linked together using github or gitlab as part of the normal development process. QW also will ensure that versioning of items are updated
-if their contents have changed, and notify when manual verification should be rerun due to changes in requirements or outputs.
+The QW allows users to track the different changes in design and development requirements, outputs, verification and validations. These different stages are linked together using github or gitlab as part of the normal development process. QW also will ensure that versioning of items are updated if their contents have changed, and notify when manual verification should be rerun due to changes in requirements or outputs.
 
 # Setup
 
 ## Installation
 
-The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements. Otherwise may want
-to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
+The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements. Otherwise you may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
 
 For Unix:
 
@@ -54,8 +48,7 @@ qw init --repo github.com:username/reponame --service github
 > INFO: Please commit the files after you have finished your setup
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
 
-If you have a different development flow than using the default branch, then edit the `qw` ruleset for the repository, adding extra branches to the
-ruleset (e.g. `develop`)
+If you have a different development flow than pull requests into main/master then edit the `qw` ruleset for the repository, adding extra branches to the ruleset (e.g. `develop`)
 
 <!--
   - [name=Stef] or do we just define what workflow they have to use? Could also give a comma separated list of branch names in the --git-service option?
@@ -189,7 +182,7 @@ QW uses existing issues and pull requests to track the different design and deve
 - Create a pull request from github and follow the instructions on the template
   ![](https://hackmd.io/_uploads/BkYpd7ikp.png)
   - If the `qw-ignore` tag is added, then this PR does is not related to the medical device aspect of the software
-- In this example, the pull request contains the design outputs and design verification. These can be added seperately, where the design verification
+- In this example, the pull request contains the design outputs and design verification. These can be added separately, where the design verification
   would also be linked to the requirement.
   ![](https://hackmd.io/_uploads/ryp39Xj1a.png)
 - QW will check that the chain of design items are able to be processed and fully signed off,
