@@ -1,18 +1,26 @@
 # Proposed Quality Workflow (QW) user guide - release 1
 
-The Quality Workflow tool (QW) aims to help reduce the friction in creating and maintaining traceability matrices (later release could target hazards and risks).
+The Quality Workflow tool (QW) aims to help reduce the friction in creating and maintaining traceability matrices
+(later release could target hazards and risks).
 
 # Background and use-case
 
-Within medical device software there are several design and development stages that should be tracked, versioned and a traceability matrix is a standard way of presenting this information. The Quality Management System used in WEISS is document based, which requires substantial manual effort in tracking linkages, updating of versions and ensuring that all approvals are current.
+Within medical device software there are several design and development stages that should be tracked,
+versioned and a traceability matrix is a standard way of presenting this information.
+The Quality Management System used in WEISS is document based, which requires substantial manual effort in tracking linkages,
+updating of versions and ensuring that all approvals are current.
 
-The QW allows users to track the different changes in design and development requirements, outputs, verification and validations. These different stages are linked together using github or gitlab as part of the normal development process. QW also will ensure that versioning of items are updated if their contents have changed, and notify when manual verification should be rerun due to changes in requirements or outputs.
+The QW allows users to track the different changes in design and development requirements, outputs, verification and validations.
+These different stages are linked together using github or gitlab as part of the normal development process.
+QW also will ensure that versioning of items are updated if their contents have changed,
+and notify when manual verification should be rerun due to changes in requirements or outputs.
 
 # Setup
 
 ## Installation
 
-The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements. Otherwise you may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
+The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements.
+If not, you may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
 
 For Unix:
 
@@ -48,10 +56,11 @@ qw init --repo github.com:username/reponame --service github
 > INFO: Please commit the files after you have finished your setup
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
 
-If you have a different development flow than pull requests into main/master then edit the `qw` ruleset for the repository, adding extra branches to the ruleset (e.g. `develop`)
+If you have a different development flow than pull requests into main/master then edit the `qw` ruleset for the repository,
+adding extra branches to the ruleset (e.g. `develop`)
 
 <!--
-  - [name=Stef] or do we just define what workflow they have to use? Could also give a comma separated list of branch names in the --git-service option?
+- [name=Stef] or do we just define what workflow they have to use? Could also give a comma separated list of branch names in the --git-service option?
 -->
 
 You can omit `--service github` if the repo is at `github.com` (as in
@@ -61,7 +70,7 @@ repository configured as the git remote named `upstream`.
 #### Setup Personal Access Token
 
 - Follow
-  the [github instructions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+  the [GitHub instructions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
   we suggest the following configuration options:
 
   | field             | value, user defined values defined by `${...}`              |
