@@ -133,7 +133,7 @@ Drug dosage,D,Drug dosage calculation module.
 ```
 
 ```shell
-qw config --update
+qw config --update-remote
 ```
 
 > INFO: Added "Drug dosage (D)" to local components, ensure that the updated file is committed.
