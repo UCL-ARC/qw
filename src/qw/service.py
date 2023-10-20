@@ -157,8 +157,7 @@ class Issue:
     """
     Project management Issue.
 
-    For example a bug report, user need, or
-    design input.
+    For example a bug report, user need, or requirement.
     """
 
     def number(self) -> int:
