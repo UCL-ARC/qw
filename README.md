@@ -50,7 +50,7 @@ qw init --repo github.com:username/reponame --service github
 
 > INFO: A ".qw" directory has been created
 > INFO: Github actions for qw have been added to your ".github" directory
-> INFO: Templates added to your ".github" directory: "User need", "Design input", "Design output", "Pull request"
+> INFO: Templates added to your ".github" directory: "User need", "Requirement", "Design output", "Pull request"
 > INFO: Please commit the files after you have finished your setup
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
 
@@ -121,7 +121,7 @@ QW creates identifiers for User Needs and Requirements.
 | User Need    | `URS-U${user need number}`                          | URS-U001     |
 | Requirement  | `REQ-${component short code}-${requirement number}` | REQ-SWR-0001 |
 
-QW initialises with a `System` component for design inputs (used for generating a unique identifier, short code value is `X`).
+QW initialises with a `System` component for requirements (used for generating a unique identifier, short code value is `X`).
 You can add extra components to the configuration by editing the `/.qw/components.csv`
 
 ```
@@ -157,7 +157,7 @@ QW uses existing issues and pull requests to track the different design and deve
 - The first comment of this issue will be used by `qw` for tracking, but you can edit anything manually after the `Other information` header and this
   will not interfere with the tool
 
-### Design inputs
+### Requirements
 
 - In your github repository, Add a new issue, selecting the User needs template
   ![](https://hackmd.io/_uploads/Syo1w1oy6.png)
@@ -177,7 +177,7 @@ QW uses existing issues and pull requests to track the different design and deve
     - User maintenance
     - Regulatory
 - Hit `Submit new issue` and theissue will be rendered like this:
-  ![](https://hackmd.io/_uploads/H1-xiDBWT.png)
+  ![](https://hackmd.io/_uploads/Bycax6yfp.png)
   - Note that the `design-component-d` has been added as "Drug dosage" was added as a component type with a short code of `D`.
 - The first comment of this issue will be used by `qw` for tracking, but you can edit anything manually after the `Other information` header and this
   will not interfere with the tool
@@ -190,13 +190,13 @@ QW uses existing issues and pull requests to track the different design and deve
   ![](https://hackmd.io/_uploads/BkYpd7ikp.png)
   - If the `qw-ignore` tag is added, then this PR does is not related to the medical device aspect of the software
 - In this example, the pull request contains the design outputs and design verification. These can be added seperately, where the design verification
-  would also be linked to the design input.
+  would also be linked to the requirement.
   ![](https://hackmd.io/_uploads/ryp39Xj1a.png)
 - QW will check that the chain of design items are able to be processed and fully signed off,
   when this is successful the github action will pass
   ![](https://hackmd.io/_uploads/H1Ix67i16.png)
 - QW requires a pull request that is labelled as a `design-validation` or `design-verification` to have at least one automated test that targets a
-  specific `design-output`, `design-input` or `user-need`
+  specific `design-output`, `requirement` or `user-need`
   - Tests are tracked manually in `.qw/test_mapping.csv` where multiple issues are separated by `;`, in the following structure
     test name | issue(s) targeted
     -- | --
@@ -270,7 +270,7 @@ An example incrementing a tag upon update:
 > Running WQ freeze
 > Found 47 QW items
 >
-> INFO: Design Input https://github.com/stefpiatek/dummy-medical-software/issues/6 has been updated since last saved
+> INFO: Requirement https://github.com/stefpiatek/dummy-medical-software/issues/6 has been updated since last saved
 >
 > Previous data:
 >
@@ -284,7 +284,7 @@ An example incrementing a tag upon update:
 >
 > Would you like to increment the version? (y/n): <prompt response from user - y>
 > INFO: Updated tag to "qw-v2"
-> INFO: There are 2 design outputs that link to this Design Input, please ensure one of them has the "qw-v2" tag if it resolves the updated
+> INFO: There are 2 design outputs that link to this Requirement, please ensure one of them has the "qw-v2" tag if it resolves the updated
 > information
 >
 > - https://github.com/stefpiatek/dummy-medical-software/pull/7
@@ -298,7 +298,7 @@ Example response when the change is trivial and does not warrant a change in the
 
 > ...
 > Would you like to increment the version? (y/n): <prompt response from user - n>
-> INFO: Tag kept at "qw-v1", data for the Design Input has been updated to the current state
+> INFO: Tag kept at "qw-v1", data for the Requirement has been updated to the current state
 > ...
 
 ### Creating a documentation release
@@ -309,9 +309,9 @@ Running this will:
 - Ensure that all issues and pull requests have been marked with `qw-ignore` or one of the `qw-` item tags, raising an error (and stopping) to ensure
   all items are tagged
 - Ensure that all QW items have versions
-- Ensure the entire chain `design validation -> design verification -> design output -> design input -> user need` is consistent with QW rules,
+- Ensure the entire chain `design validation -> design verification -> design output -> requirement -> user need` is consistent with QW rules,
   starting from the furthest stage of QW items. So if there is no `design validation`, then the chain will start from `design verification`. If there
-  was only a `user need` and `design input`s, then only these would be validated
+  was only a `user need` and `requirement`s, then only these would be validated
 - Create word documents based on the QW template for export
 - [name=Stef] Optionally? Create an html page that shows a burndown graph for each of the QW item types, showing the number completed and outstanding
   over time. Would this be useful?
