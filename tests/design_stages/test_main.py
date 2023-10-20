@@ -12,15 +12,16 @@ def test_build_from_dict(
     minimal_requirement: Requirement,
 ):
     """Ensure that an instance can be serialised without any prior knowledge of the type."""
-    json_data = json.dumps(dict_minimal_requirement)
+    json_data = json.dumps([dict_minimal_requirement])
     built_from_json = from_json(json_data)
-    assert isinstance(built_from_json, Requirement)
-    assert minimal_requirement.diff(built_from_json) == {}
+    assert len(built_from_json) == 1
+    assert isinstance(built_from_json[0], Requirement)
+    assert minimal_requirement.diff(built_from_json[0]) == {}
 
 
 def test_unknown_type_from_json(dict_minimal_requirement: dict):
     """An unknown design stage in the dictionary should raise a QwException."""
     dict_minimal_requirement["stage"] = "unknown"
-    unknown_json_dump = json.dumps(dict_minimal_requirement)
+    unknown_json_dump = json.dumps([dict_minimal_requirement])
     with pytest.raises(QwError):
         from_json(unknown_json_dump)
