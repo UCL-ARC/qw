@@ -86,8 +86,8 @@ def from_json(json_str: str) -> UserNeed | Requirement:
         raise QwError(msg) from exception
 
     if stage == DesignStage.REQUIREMENT:
-        return Requirement.from_json(json_str)
+        return Requirement.from_dict(json_data)
     if stage == DesignStage.NEED:
-        return UserNeed.from_json(json_str)
+        return UserNeed.from_dict(json_data)
     not_implemented = f"{stage} not implemented"
     raise QwError(not_implemented)

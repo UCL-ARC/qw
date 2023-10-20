@@ -1,8 +1,7 @@
 """Base class for design stages."""
-import json
 from abc import ABC, abstractmethod
 from copy import copy
-from typing import Self
+from typing import Any, Self
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
@@ -31,28 +30,26 @@ class DesignBase(ABC):
                 msg = f"No {field} in {self.__class__.__name__}"
                 raise QwError(msg)
 
-    def to_json(self) -> str:
+    def to_dict(self) -> dict[str, Any]:
         """
-        Serialise data to JSON.
+        Serialise data to dictionary.
 
         Does not serialise class fields as these may be changed in later versions
 
         :return: JSON representation of class
         """
-        serialise_dict = copy(self.__dict__)
-        return json.dumps(serialise_dict)
+        return copy(self.__dict__)
 
     @classmethod
-    def from_json(cls, json_str: str) -> Self:
+    def from_dict(cls, input_dict: dict[str, Any]) -> Self:
         """
-        Build json from json string.
+        Build class instance from dictionary.
 
-        :param json_str: json string representation
+        :param input_dict: instance persisted to dictionary.
         :return: Design stage instance.
         """
         instance = cls()
-        json_data = json.loads(json_str)
-        for key, value in json_data.items():
+        for key, value in input_dict.items():
             if key == "stage":
                 continue
             if key == "remote_item_type":
