@@ -7,6 +7,7 @@ the project managment interest resides.
 
 import json
 import pathlib
+import re
 from enum import Enum
 
 import git
@@ -109,7 +110,7 @@ def remote_address_to_host_user_repo(
     """
     Get (host, user, reponame) triple from the remote address.
 
-    Takes the remote URL (such as git@github.com:me/my_repo)
+    Takes the remote URL (such as git@github.com:me/my_repo.git)
     and returns the interesting components of it
     (such as ("github.com", "me", "my_repo")).
     """
@@ -118,7 +119,7 @@ def remote_address_to_host_user_repo(
         host_user_repo = splitstr(bits[1], "/", 3)
         if host_user_repo is None:
             return None
-        (host, user, repo) = host_user_repo
+        (host, user, repo_raw) = host_user_repo
     else:
         host_userrepo = splitstr(address, ":", 2)
         if host_userrepo is None:
@@ -127,10 +128,11 @@ def remote_address_to_host_user_repo(
         user_repo = splitstr(userrepo, "/", 2)
         if user_repo is None:
             return None
-        (user, repo) = user_repo
+        (user, repo_raw) = user_repo
     uh = splitstr(host, "@", 2)
     if uh is not None:
         host = uh[1]
+    repo = re.sub(r"\.git$", "", repo_raw)
     return (host, user, repo)
 
 

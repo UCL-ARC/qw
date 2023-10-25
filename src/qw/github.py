@@ -32,7 +32,7 @@ class Service(qw.service.GitService):
     def __init__(self, conf):
         """Log in with the gh auth token."""
         super().__init__(conf)
-        token = keyring.get_password("gh:github.com", "")
+        token = keyring.get_password("gh:github.com", "qw-pat")
         self.gh = github3.login(token=token)
 
     def get_issue(self, number: int):
