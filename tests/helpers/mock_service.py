@@ -54,7 +54,7 @@ class FileSystemService(GitService):
         """Set up mocked GitHub service reading from local filesystem."""
         super().__init__({"user_name": "file", "repo_name": "system"})
         if not root_dir:
-            root_dir = Path(__file__).parent / "resources" / "design_stages"
+            root_dir = Path(__file__).parents[1] / "resources" / "design_stages"
         self.root_dir = root_dir
 
     def get_issue(self, number: int):

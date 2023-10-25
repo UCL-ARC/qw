@@ -5,7 +5,7 @@ import pytest
 
 from qw.base import QwError
 from qw.design_stages.main import Requirement, from_json, from_service
-from tests.mock_service import FileSystemService
+from tests.helpers.mock_service import FileSystemService
 
 
 def test_build_from_dict(
