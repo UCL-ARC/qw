@@ -9,7 +9,7 @@ from qw.design_stages.main import Requirement
 
 
 def test_serialise(
-    json_minimal_requirement: str,
+    dict_minimal_requirement: dict,
     minimal_requirement: Requirement,
 ) -> None:
     """
@@ -19,10 +19,10 @@ def test_serialise(
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    assert minimal_requirement.to_json() == json_minimal_requirement
+    assert minimal_requirement.to_dict() == dict_minimal_requirement
 
 
-def test_deserialisation(json_minimal_requirement: str) -> None:
+def test_deserialisation(dict_minimal_requirement: dict) -> None:
     """
     Ensure deserialisation.
 
@@ -30,7 +30,7 @@ def test_deserialisation(json_minimal_requirement: str) -> None:
     When this is serialised to json
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
-    requirement = Requirement.from_json(json_minimal_requirement)
+    requirement = Requirement.from_dict(dict_minimal_requirement)
     requirement._validate_required_fields()
 
     assert requirement.title == "qw_title"

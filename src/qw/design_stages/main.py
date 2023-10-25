@@ -1,6 +1,6 @@
 """Data types representing each design stage and funtions to interact with them."""
 import json
-from typing import Self
+from typing import Any, Self
 
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
@@ -70,24 +70,34 @@ class Requirement(DesignBase):
         return instance
 
 
-def from_json(json_str: str) -> UserNeed | Requirement:
+def from_json(json_str: str) -> list[UserNeed | Requirement]:
     """
-    Build any design stage from json.
+    Build design stages from json string.
 
-    :param json_str: design stage serialised in json.
-    :raises QwError: if the stage is unknown or has not been implemented
-    :return: instance of class with the json data
+    :param json_str: design stages serialised in a json array.
+    :raises QwError: if a stage is unknown or has not been implemented
+    :return: instances of classes, deserialised from json data
     """
-    json_data = json.loads(json_str)
-    msg = f"Design stage {json_data['stage']} not known, should be one of {[stage.value for stage in DesignStage]}"
+    data_items = json.loads(json_str)
+    output = []
+    for data_item in data_items:
+        output.append(_build_design_stage_or_throw(data_item))
+    return output
+
+
+def _build_design_stage_or_throw(data_item: dict[str, Any]):
     try:
-        stage = DesignStage(json_data["stage"])
+        stage = DesignStage(data_item["stage"])
     except ValueError as exception:
+        msg = (
+            f"Design stage {data_item['stage']} not known, "
+            f"should be one of {[stage.value for stage in DesignStage]}"
+        )
         raise QwError(msg) from exception
-
     if stage == DesignStage.REQUIREMENT:
-        return Requirement.from_json(json_str)
+        return Requirement.from_dict(data_item)
     if stage == DesignStage.NEED:
-        return UserNeed.from_json(json_str)
+        return UserNeed.from_dict(data_item)
+
     not_implemented = f"{stage} not implemented"
     raise QwError(not_implemented)

@@ -1,5 +1,4 @@
 """Shared fixtures for design stage testing."""
-import json
 
 import pytest
 
@@ -7,9 +6,9 @@ from qw.design_stages.main import Requirement
 
 
 @pytest.fixture()
-def json_minimal_requirement() -> str:
+def dict_minimal_requirement() -> dict:
     """JSON dump of minimal requirement."""
-    json_data = {
+    return {
         "title": "qw_title",
         "description": "qw_description\n\nover\nlines",
         "internal_id": 1,
@@ -17,7 +16,6 @@ def json_minimal_requirement() -> str:
         "stage": "requirement",
         "user_need": None,
     }
-    return json.dumps(json_data)
 
 
 @pytest.fixture()
