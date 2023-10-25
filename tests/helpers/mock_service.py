@@ -48,7 +48,7 @@ class FileSystemIssue(Issue):
 
 
 class FileSystemService(GitService):
-    """The GitHub service."""
+    """The FileSystem Service."""
 
     def __init__(self, root_dir: Path | None = None):
         """Set up mocked GitHub service reading from local filesystem."""
