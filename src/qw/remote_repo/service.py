@@ -8,11 +8,13 @@ the project managment interest resides.
 import json
 import pathlib
 import re
+from abc import ABC, abstractmethod
 from enum import Enum
 
 import git
 
 from qw.base import QwError
+from qw.design_stages.categories import RemoteItemType
 
 
 class Service(str, Enum):
@@ -155,13 +157,15 @@ def hostname_to_service(hostname: str) -> str:
     )
 
 
-class Issue:
+class Issue(ABC):
     """
     Project management Issue.
 
     For example a bug report, user need, or requirement.
     """
 
+    @property
+    @abstractmethod
     def number(self) -> int:
         """
         Get issue number.
@@ -169,18 +173,38 @@ class Issue:
         The identifying number that the users associate with this
         issue.
         """
-        raise NotImplementedError
+        ...
 
+    @property
+    @abstractmethod
     def title(self) -> str:
         """
         Get title.
 
         The title of the issue, such as is visible in issue lists.
         """
-        raise NotImplementedError
+        ...
+
+    @property
+    @abstractmethod
+    def labels(self) -> list[str]:
+        """Get the label names for the issue."""
+        ...
+
+    @property
+    @abstractmethod
+    def body(self) -> str:
+        r"""Get the body of the first comment, always using `\n` as the newline character."""
+        ...
+
+    @property
+    @abstractmethod
+    def item_type(self) -> RemoteItemType:
+        """Get the type of the issue, as we may handle a pull request differently to an issue."""
+        ...
 
 
-class GitService:
+class GitService(ABC):
     """A service hosting a git repository and project management tools."""
 
     def __init__(self, conf) -> None:
@@ -189,6 +213,13 @@ class GitService:
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
 
-    def get_issue(self, number: int):
+    @abstractmethod
+    def get_issue(self, number: int) -> Issue:
         """Get the numbered issue."""
-        raise NotImplementedError
+        ...
+
+    @property
+    @abstractmethod
+    def issues(self) -> list[Issue]:
+        """Get all issues for the repository."""
+        ...
