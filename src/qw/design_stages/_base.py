@@ -5,6 +5,7 @@ from typing import Any, Self
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
+from qw.remote_repo.service import Issue
 
 
 class DesignBase(ABC):
@@ -84,12 +85,11 @@ class DesignBase(ABC):
 
     @classmethod
     @abstractmethod
-    def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:
+    def from_issue(cls, issue: Issue) -> Self:
         """
-        Create design stage from Markdown data.
+        Create requirement from issue data.
 
-        :param title: title of the requirement
-        :param internal_id: Internal ID of the requirement, e.g. GitHub id
-        :param markdown: Markdown text within the issue
-        :return: Requirement instance
+        :param issue: issue data from remote repository
+        :return: Design stsage instance
         """
+        ...
