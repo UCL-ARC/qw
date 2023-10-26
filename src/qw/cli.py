@@ -1,7 +1,7 @@
 """
 The qw (Quality Workflow) tool.
 
-Helps enforce regulatory compliance for projects managed on github.
+Helps enforce regulatory compliance for projects managed on GitHub.
 """
 
 import json
@@ -13,9 +13,16 @@ import git
 import typer
 from loguru import logger
 
-import qw.factory
-import qw.service
 from qw.base import QwError
+from qw.remote_repo.factory import get_service
+from qw.remote_repo.service import (
+    Service,
+    find_aunt_dir,
+    get_configuration,
+    get_repo_url,
+    hostname_to_service,
+    remote_address_to_host_user_repo,
+)
 
 app = typer.Typer()
 
@@ -67,7 +74,7 @@ def init(
         ),
     ] = None,
     service: Annotated[
-        Optional[qw.service.Service],
+        Optional[Service],
         typer.Option(
             help="Which service is hosting the issue tracker. Not"
             " required if the repo URL begins 'github' or 'gitlab'.",
@@ -81,13 +88,13 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    git_dir = qw.service.find_aunt_dir(
+    git_dir = find_aunt_dir(
         ".git",
         "We are not in a git project, so we cannot initialize!",
     )
     base = git_dir.parent
     gitrepo = git.Repo(base)
-    repo = qw.service.get_repo_url(gitrepo, repo)
+    repo = get_repo_url(gitrepo, repo)
     qw_dir = base / ".qw"
     logger.debug(
         ".qw directory is '{dir}'",
@@ -111,9 +118,9 @@ def init(
         raise QwError(
             msg,
         )
-    (host, username, reponame) = qw.service.remote_address_to_host_user_repo(repo)
+    (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
-        service = qw.service.hostname_to_service(host)
+        service = hostname_to_service(host)
     logger.debug(
         "service, owner, repo: {service}, {owner}, {repo}",
         service=str(service),
@@ -134,10 +141,10 @@ def init(
 @app.command()
 def check():
     """Check whether all the traceability information is present."""
-    conf = qw.service.get_configuration()
-    service = qw.factory.get_service(conf)
-    sys.stdout.write(str(conf))
-    sys.stdout.write(service.get_issue(1).title())
+    conf = get_configuration()
+    service = get_service(conf)
+    logger.info(str(conf))
+    logger.info(service.get_issue(1).title)
 
 
 if __name__ == "__main__":

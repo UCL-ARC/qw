@@ -1,7 +1,7 @@
 """Testing of common service functions."""
 import pytest
 
-from qw.service import remote_address_to_host_user_repo
+from qw.remote_repo.service import remote_address_to_host_user_repo
 
 
 @pytest.mark.parametrize(

@@ -2,10 +2,13 @@
 import json
 from typing import Any, Self
 
+from loguru import logger
+
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.md import text_under_heading
+from qw.remote_repo.service import Issue, Service
 
 
 class UserNeed(DesignBase):
@@ -21,21 +24,19 @@ class UserNeed(DesignBase):
         self.stage = DesignStage.NEED
 
     @classmethod
-    def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:
+    def from_issue(cls, issue: Issue) -> Self:
         """
-        Create requirement from Markdown data.
+        Create requirement from issue data.
 
-        :param title: title of the requirement
-        :param internal_id: Internal ID of the requirement, e.g. GitHub id
-        :param markdown: Markdown text within the issue
+        :param issue: issue data from remote repository
         :return: Requirement instance
         """
         instance = cls()
 
-        instance.title = title
-        instance.internal_id = internal_id
-        instance.description = text_under_heading(markdown, "Description")
-        instance.requirement = text_under_heading(markdown, "Requirements")
+        instance.title = issue.title
+        instance.internal_id = issue.number
+        instance.description = text_under_heading(issue.body, "Description")
+        instance.requirement = text_under_heading(issue.body, "Requirements")
         return instance
 
 
@@ -52,25 +53,26 @@ class Requirement(DesignBase):
         self.stage = DesignStage.REQUIREMENT
 
     @classmethod
-    def from_markdown(cls, title: str, internal_id: int, markdown: str) -> Self:
+    def from_issue(cls, issue: Issue) -> Self:
         """
-        Create requirement from Markdown data.
+        Create requirement from issue data.
 
-        :param title: title of the requirement
-        :param internal_id: Internal ID of the requirement, e.g. GitHub id
-        :param markdown: Markdown text within the issue
+        :param issue: issue data from remote repository
         :return: Requirement instance
         """
         instance = cls()
 
-        instance.title = title
-        instance.internal_id = internal_id
-        instance.description = text_under_heading(markdown, "Description")
-        instance.user_need = text_under_heading(markdown, "Parent user need")
+        instance.title = issue.title
+        instance.internal_id = issue.number
+        instance.description = text_under_heading(issue.body, "Description")
+        instance.user_need = text_under_heading(issue.body, "Parent user need")
         return instance
 
 
-def from_json(json_str: str) -> list[UserNeed | Requirement]:
+DesignStages = list[UserNeed | Requirement]
+
+
+def from_json(json_str: str) -> DesignStages:
     """
     Build design stages from json string.
 
@@ -101,3 +103,26 @@ def _build_design_stage_or_throw(data_item: dict[str, Any]):
 
     not_implemented = f"{stage} not implemented"
     raise QwError(not_implemented)
+
+
+def from_service(service: Service) -> DesignStages:
+    """
+    Build design stages from a given service.
+
+    :param service: instance of a service for a remote repo.
+    :return: all designs stages
+    """
+    output_stages = []
+    for issue in service.issues:
+        if "qw-ignore" in issue.labels:
+            logger.debug(
+                "Issue {number} tagged to be ignored, skipping",
+                number=issue.number,
+            )
+            continue
+        # Could have multiple design stages from the same pull request so allow multiple outputs from a single issue
+        if "qw-user-need" in issue.labels:
+            output_stages.append(UserNeed.from_issue(issue))
+        if "qw-requirement" in issue.labels:
+            output_stages.append(Requirement.from_issue(issue))
+    return output_stages
