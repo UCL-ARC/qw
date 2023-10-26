@@ -1,4 +1,4 @@
-"""Data types representing each design stage and funtions to interact with them."""
+"""Data types representing each design stage and functions to interact with them."""
 import json
 from typing import Any, Self
 

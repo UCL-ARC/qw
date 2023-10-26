@@ -4,7 +4,6 @@ The qw (Quality Workflow) tool.
 Helps enforce regulatory compliance for projects managed on GitHub.
 """
 
-import json
 import sys
 from enum import Enum
 from typing import Annotated, Optional
@@ -14,11 +13,11 @@ import typer
 from loguru import logger
 
 from qw.base import QwError
+from qw.local_store.directories import find_git_base_dir, get_or_create_qw_dir
+from qw.local_store.main import get_configuration, write_to_config
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
     Service,
-    find_aunt_dir,
-    get_configuration,
     get_repo_url,
     hostname_to_service,
     remote_address_to_host_user_repo,
@@ -88,54 +87,14 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    git_dir = find_aunt_dir(
-        ".git",
-        "We are not in a git project, so we cannot initialize!",
-    )
-    base = git_dir.parent
+    base = find_git_base_dir()
     gitrepo = git.Repo(base)
     repo = get_repo_url(gitrepo, repo)
-    qw_dir = base / ".qw"
-    logger.debug(
-        ".qw directory is '{dir}'",
-        dir=qw_dir,
-    )
-    if qw_dir.is_file():
-        msg = (
-            ".qw file exists, which is blocking us from making"
-            " a .qw directory. Please delete it!"
-        )
-        raise QwError(
-            msg,
-        )
-    if not qw_dir.is_dir():
-        qw_dir.mkdir()
-    elif not force:
-        msg = (
-            ".qw directory already exists! Use existing"
-            " configuration or use --force flag to reinitialize!"
-        )
-        raise QwError(
-            msg,
-        )
+    qw_dir = get_or_create_qw_dir(base, force=force)
     (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
         service = hostname_to_service(host)
-    logger.debug(
-        "service, owner, repo: {service}, {owner}, {repo}",
-        service=str(service),
-        owner=username,
-        repo=reponame,
-    )
-    conf = {
-        "repo_url": repo,
-        "repo_name": reponame,
-        "user_name": username,
-        "service": str(service),
-    }
-    conf_file_name = qw_dir / "conf.json"
-    with conf_file_name.open("w") as conf_file:
-        json.dump(conf, conf_file, indent=2)
+    write_to_config(qw_dir, repo, reponame, service, username)
 
 
 @app.command()
