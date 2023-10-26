@@ -1,22 +1,22 @@
 """Factory for making git hosting services."""
 
-import qw.github
-import qw.service
 from qw.base import QwError
+from qw.remote_repo._github import GitHubService
+from qw.remote_repo.service import GitService, Service, get_configuration
 
 
-def get_service(conf: dict | None = None) -> qw.service.GitService:
+def get_service(conf: dict | None = None) -> GitService:
     """Return a git hosting service."""
     if conf is None:
-        conf = qw.service.get_configuration()
+        conf = get_configuration()
     name = conf.get("service", None)
     if name is None:
         msg = "Configuration is corrupt. Please run `qw init`"
         raise QwError(
             msg,
         )
-    if name == str(qw.service.Service.GITHUB):
-        return qw.github.Service(conf)
+    if name == str(Service.GITHUB):
+        return GitHubService(conf)
     msg = f"Do not know how to connect to the {name} service!"
     raise QwError(
         msg,
