@@ -4,7 +4,7 @@ import json
 import pytest
 
 from qw.base import QwError
-from qw.design_stages.main import Requirement, from_json, from_service
+from qw.design_stages.main import Requirement, from_json, get_remote_stages
 from tests.helpers.mock_service import FileSystemService
 
 
@@ -37,5 +37,5 @@ def test_filesystem_service_builds_issues():
     Then there should be at least one DesignStage from the service
     """
     service = FileSystemService()
-    stages = from_service(service)
+    stages = get_remote_stages(service)
     assert stages

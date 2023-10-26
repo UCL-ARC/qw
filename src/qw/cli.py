@@ -13,8 +13,7 @@ import typer
 from loguru import logger
 
 from qw.base import QwError
-from qw.local_store.directories import find_git_base_dir, get_or_create_qw_dir
-from qw.local_store.main import get_configuration, write_to_config
+from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
     Service,
@@ -87,20 +86,21 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    base = find_git_base_dir()
-    gitrepo = git.Repo(base)
+    store = LocalStore()
+    gitrepo = git.Repo(store.base_dir)
     repo = get_repo_url(gitrepo, repo)
-    qw_dir = get_or_create_qw_dir(base, force=force)
+    store.get_or_create_qw_dir(force=force)
     (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
         service = hostname_to_service(host)
-    write_to_config(qw_dir, repo, reponame, service, username)
+    store.write_to_config(repo, reponame, service, username)
 
 
 @app.command()
 def check():
     """Check whether all the traceability information is present."""
-    conf = get_configuration()
+    store = LocalStore()
+    conf = store.read_configuration()
     service = get_service(conf)
     logger.info(str(conf))
     logger.info(service.get_issue(1).title)

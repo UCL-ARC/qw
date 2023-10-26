@@ -1,5 +1,4 @@
 """Data types representing each design stage and functions to interact with them."""
-import json
 from typing import Any, Self
 
 from loguru import logger
@@ -7,6 +6,7 @@ from loguru import logger
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import DesignStage, RemoteItemType
+from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
 from qw.remote_repo.service import Issue, Service
 
@@ -72,15 +72,15 @@ class Requirement(DesignBase):
 DesignStages = list[UserNeed | Requirement]
 
 
-def from_json(json_str: str) -> DesignStages:
+def get_local_stages(local_store: LocalStore) -> DesignStages:
     """
-    Build design stages from json string.
+    Build design stages from local store.
 
-    :param json_str: design stages serialised in a json array.
+    :param local_store: local storage
     :raises QwError: if a stage is unknown or has not been implemented
-    :return: instances of classes, deserialised from json data
+    :return: instances of classes, deserialised from local store
     """
-    data_items = json.loads(json_str)
+    data_items = local_store.read_local_data()
     output = []
     for data_item in data_items:
         output.append(_build_design_stage_or_throw(data_item))
@@ -105,9 +105,9 @@ def _build_design_stage_or_throw(data_item: dict[str, Any]):
     raise QwError(not_implemented)
 
 
-def from_service(service: Service) -> DesignStages:
+def get_remote_stages(service: Service) -> DesignStages:
     """
-    Build design stages from a given service.
+    Build design stages from a given remote service.
 
     :param service: instance of a service for a remote repo.
     :return: all designs stages

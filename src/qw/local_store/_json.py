@@ -8,11 +8,11 @@ import json
 from pathlib import Path
 
 
-def _load_json(path: Path) -> dict:
+def _load_json(path: Path) -> dict | list[dict]:
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def _dump_json(data: dict, path: Path) -> None:
+def _dump_json(data: dict | list[dict], path: Path) -> None:
     with path.open("w", encoding="utf-8") as conf_file:
         json.dump(data, conf_file, sort_keys=True, indent=2)

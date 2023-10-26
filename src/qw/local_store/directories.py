@@ -1,8 +1,6 @@
 """Local qw store directories."""
 import pathlib
 
-from loguru import logger
-
 from qw.base import QwError
 
 
@@ -41,24 +39,3 @@ def _find_conf_dir() -> pathlib.Path:
         ".qw",
         "Could not find a configuration directory, please initialize with `qw init`",
     )
-
-
-def get_or_create_qw_dir(base: pathlib.Path, *, force: bool = False) -> pathlib.Path:
-    """
-    Create QW directory.
-
-    :param base: Base directory
-    :param force: force re-initialisation.
-    :return Path: qw directory
-    """
-    qw_dir = base / ".qw"
-    logger.debug(".qw directory is '{dir}'", dir=qw_dir)
-    if qw_dir.is_file():
-        msg = ".qw file exists, which is blocking us from making a .qw directory. Please delete it!"
-        raise QwError(msg)
-    if not qw_dir.is_dir():
-        qw_dir.mkdir()
-    elif not force:
-        msg = ".qw directory already exists! Use existing configuration or use --force flag to reinitialize!"
-        raise QwError(msg)
-    return qw_dir
