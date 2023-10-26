@@ -17,7 +17,7 @@ class UserNeed(DesignBase):
     not_required_fields = frozenset(["requirement"])
 
     def __init__(self) -> None:
-        """Please use the from_markdown or from_json methods instead of using this constructor."""
+        """Please use the from_markdown or from_dict methods instead of using this constructor."""
         super().__init__()
         self.requirement: str | None = None
         self.remote_item_type = RemoteItemType.ISSUE
@@ -46,7 +46,7 @@ class Requirement(DesignBase):
     not_required_fields = frozenset(["user_need"])
 
     def __init__(self) -> None:
-        """Please use the from_markdown or from_json methods instead of using this constructor."""
+        """Please use the from_markdown or from_dict methods instead of using this constructor."""
         super().__init__()
         self.user_need: str | None = None
         self.remote_item_type = RemoteItemType.ISSUE

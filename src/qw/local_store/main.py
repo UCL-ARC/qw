@@ -1,9 +1,8 @@
 """Interaction with the qw local configuration and data storage."""
-import json
-
 from loguru import logger
 
 from qw.base import QwError
+from qw.local_store._json import _dump_json, _load_json
 from qw.local_store.directories import _find_conf_dir
 
 
@@ -18,8 +17,7 @@ def get_configuration() -> dict:
         raise QwError(
             msg,
         )
-    with conf_file_name.open() as conf:
-        return json.load(conf)
+    return _load_json(conf_file_name)
 
 
 def write_to_config(qw_dir, repo, reponame, service, username):
@@ -37,5 +35,4 @@ def write_to_config(qw_dir, repo, reponame, service, username):
         "service": str(service),
     }
     conf_file_name = qw_dir / "conf.json"
-    with conf_file_name.open("w") as conf_file:
-        json.dump(conf, conf_file, indent=2)
+    _dump_json(conf, conf_file_name)
