@@ -16,6 +16,7 @@ from loguru import logger
 import qw.factory
 import qw.service
 from qw.base import QwError
+import qw.mergedoc
 
 app = typer.Typer()
 
@@ -29,7 +30,7 @@ class LogLevel(Enum):
     DEBUG = "debug"
 
 
-LOGELEVEL_TO_LOGURU = {
+LOGLEVEL_TO_LOGURU = {
     LogLevel.DEBUG: 10,
     LogLevel.INFO: 20,
     LogLevel.WARNING: 30,
@@ -53,7 +54,7 @@ def main(
     """
     logger.remove()
     if loglevel is not None:
-        logger.add(sys.stderr, level=LOGELEVEL_TO_LOGURU[loglevel])
+        logger.add(sys.stderr, level=LOGLEVEL_TO_LOGURU[loglevel])
 
 
 @app.command()
@@ -138,6 +139,259 @@ def check():
     service = qw.factory.get_service(conf)
     sys.stdout.write(str(conf))
     sys.stdout.write(service.get_issue(1).title())
+
+
+@app.command()
+def release():
+    """Produce documentation by merging frozen values into templates."""
+    with qw.mergedoc.load_template("tests/resources/msword/test_template.docx") as doc:
+        doc.write(
+            outputFile="out.docx",
+            simple={
+                "system-requirement-description": "a description for you"
+            },
+            tables=[[{
+                "system-requirement-id": "1",
+                "system-requirement-name": "one"
+            },{
+                "system-requirement-id": "3",
+                "system-requirement-name": "three"
+            },{
+                "system-requirement-id": "5",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "7",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "9",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "6",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "4",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "2",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "0",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "8",
+                "system-requirement-name": "five"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "128",
+                "system-requirement-name": "one hundred and twenty-eight"
+            },{
+                "system-requirement-id": "72",
+                "system-requirement-name": "seventy-two"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "128",
+                "system-requirement-name": "one hundred and twenty-eight"
+            },{
+                "system-requirement-id": "72",
+                "system-requirement-name": "seventy-two"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "128",
+                "system-requirement-name": "one hundred and twenty-eight"
+            },{
+                "system-requirement-id": "72",
+                "system-requirement-name": "seventy-two"
+            },{
+                "system-requirement-id": "50",
+                "system-requirement-name": "fifty"
+            },{
+                "system-requirement-id": "64",
+                "system-requirement-name": "sixty-four"
+            },{
+                "system-requirement-id": "128",
+                "system-requirement-name": "one hundred and twenty-eight"
+            },{
+                "system-requirement-id": "72",
+                "system-requirement-name": "seventy-two"
+            }]]
+        )
 
 
 if __name__ == "__main__":
