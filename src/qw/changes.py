@@ -95,17 +95,20 @@ class ChangeHandler:
 
         console = Console()
         console.print(table)
-        response = Prompt.ask(
-            "Would you like to do",
-            choices=[
-                "Nothing",
-                "Update without version increment",
-                "Update and increment version",
+        prompt = "\n".join(
+            [
+                "Would you like to:",
+                "n (Don't save the update)",
+                "u (Update, but trivial change so don't increment the version)",
+                "i (Update and increment the version)",
+                "",
             ],
         )
-        if response == "Nothing":
+
+        response = Prompt.ask(prompt, choices=["n", "u", "i"])
+        if response == "n":
             return local_item
-        if response == "Update without version increment":
+        if response == "u":
             return remote_item
         remote_item.version += 1
         return remote_item

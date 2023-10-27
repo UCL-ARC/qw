@@ -108,9 +108,9 @@ def test_remove_local_item(
 @pytest.mark.parametrize(
     ("response", "expected_title", "expected_version"),
     [
-        ("Nothing", "Old title", 1),
-        ("Update without version increment", "Calculate warfarin", 1),
-        ("Update and increment version", "Calculate warfarin", 2),
+        ("n", "Old title", 1),
+        ("u", "Calculate warfarin", 1),
+        ("i", "Calculate warfarin", 2),
     ],
 )
 def test_same_items_with_changes(  # noqa: PLR0913 ignore too many functions to call
