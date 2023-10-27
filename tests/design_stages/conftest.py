@@ -15,6 +15,7 @@ def dict_minimal_requirement() -> dict:
         "remote_item_type": "issue",
         "stage": "requirement",
         "user_need": "#5",
+        "version": 1,
     }
 
 
@@ -26,5 +27,6 @@ def minimal_requirement() -> Requirement:
     requirement.description = "Warfarin dosage should be calculated using based on patient age, gender and weight"
     requirement.internal_id = 6
     requirement.user_need = "#5"
+    requirement.version = 1
     requirement._validate_required_fields()
     return requirement

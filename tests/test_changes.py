@@ -106,25 +106,26 @@ def test_remove_local_item(
 
 
 @pytest.mark.parametrize(
-    ("response", "expected_title"),
+    ("response", "expected_title", "expected_version"),
     [
-        ("Nothing", "Old title"),
-        ("Update without version increment", "Calculate warfarin"),
-        ("Update and increment version", "Calculate warfarin"),
+        ("Nothing", "Old title", 1),
+        ("Update without version increment", "Calculate warfarin", 1),
+        ("Update and increment version", "Calculate warfarin", 2),
     ],
 )
-def test_same_items_with_changes(
+def test_same_items_with_changes(  # noqa: PLR0913 ignore too many functions to call
     mock_user_input,
     qw_store_builder,
     single_requirement,
     response,
     expected_title,
+    expected_version,
 ):
     """
     Given the same Requirement in the local and remote storage, but the local storage has a different title.
 
     When local and remote items are combined, and the user responds with a decision on updating
-    Then the output stages should have the old title or new title as appropriate
+    Then the output stages should have the old title or new title, and increment the version as appropriate
     """
     # Arrange
     input_data = single_requirement
@@ -141,3 +142,4 @@ def test_same_items_with_changes(
 
     assert items
     assert items[0].title == expected_title
+    assert items[0].version == expected_version

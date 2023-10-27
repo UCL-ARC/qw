@@ -107,5 +107,5 @@ class ChangeHandler:
             return local_item
         if response == "Update without version increment":
             return remote_item
-        # TODO add in version to increment it
+        remote_item.version += 1
         return remote_item
