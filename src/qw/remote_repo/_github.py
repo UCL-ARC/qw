@@ -27,7 +27,7 @@ class Issue(qw.remote_repo.service.Issue):
     @property
     def title(self) -> str:
         """Get the title."""
-        return self._issue.title
+        return self._issue.title.strip()
 
     @property
     def labels(self) -> list[str]:
