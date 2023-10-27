@@ -13,6 +13,7 @@ import typer
 from loguru import logger
 
 from qw.base import QwError
+from qw.changes import ChangeHandler
 from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
@@ -104,6 +105,18 @@ def check():
     service = get_service(conf)
     logger.info(str(conf))
     logger.info(service.get_issue(1).title)
+
+
+@app.command()
+def freeze():
+    """Freeze the state of remote design stages and update local store."""
+    store = LocalStore()
+    conf = store.read_configuration()
+    service = get_service(conf)
+    change_handler = ChangeHandler(service, store)
+    to_save = change_handler.combine_local_and_remote_items()
+    store.write_local_data([x.to_dict() for x in to_save])
+    logger.info("Finished freeze")
 
 
 if __name__ == "__main__":

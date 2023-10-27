@@ -1,5 +1,5 @@
 """Compares changes between remote and local data, allowing the user to make decisions."""
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 
 from loguru import logger
 from rich.console import Console
@@ -62,7 +62,7 @@ class ChangeHandler:
         for stage in get_local_stages(self._store):
             paired_data[stage.internal_id]["local"] = stage
 
-        return paired_data
+        return OrderedDict(sorted(paired_data.items()))
 
     @staticmethod
     def _prompt_to_remove_local_item(local_item) -> list[DesignStages]:
