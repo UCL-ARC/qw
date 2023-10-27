@@ -1,7 +1,9 @@
 """ Merges data into output documents """
 import docx
-import lxml
 import re
+
+from md import DocumentBuilder
+from lxml.etree import Element, QName
 
 def first_key(ds : list[dict]):
     for d in ds:
@@ -31,18 +33,92 @@ def instr_elt(run):
     return instrTexts[0]
 
 
+class DocxBuilder(DocumentBuilder):
+
+    def __init__(self, paragraph):
+        self.initial_paragraph = paragraph
+
+
+    def new_paragraph(
+        self,
+        paragraph_type : DocumentBuilder.ParagraphType=None,
+        paragraph_level : int=0
+    ):
+        self.paragraph = self.initial_paragraph.insert_paragraph_before(style=None)
+
+        num_id = None
+        if paragraph_type == DocumentBuilder.ParagraphType.LIST_UNORDERED:
+            num_id = 1
+        elif paragraph_type == DocumentBuilder.ParagraphType.LIST_ORDERED:
+            num_id = 2
+        if num_id is not None:
+            nsmap = docx.oxml.ns.nsmap
+            elt = self.paragraph._p
+            pPr = elt.makeelement(QName(nsmap['w'], 'pPr'))
+            numPr = elt.makeelement(QName(nsmap['w'], 'numPr'))
+            pPr.append(numPr)
+            numPr.append(
+                elt.makeelement(
+                    QName(nsmap['w'], 'ilvl'),
+                    attrib={ QName(nsmap['w'], 'val'): str(paragraph_level) }
+                )
+            )
+            numPr.append(
+                elt.makeelement(
+                    QName(nsmap['w'], 'numId'),
+                    attrib={ QName(nsmap['w'], 'val'): str(num_id) }
+                )
+            )
+            self.paragraph._p.append(pPr)
+
+
+    def add_run(self, text : str, bold : bool=None, italic : bool=None, pre : bool=None):
+        run = self.paragraph.add_run(text)
+        run.bold = bold
+        run.italic = italic
+        if pre:
+            run.font.name = 'Courier'
+
+
+    def add_hyperlink(self, text : str, link : str, bold : bool=None, italic : bool=None, pre : bool=None):
+        run = self.paragraph.add_run("Link {0}: {1}".format(text, link))
+
+
+class PlainTextDocxBuilder(DocumentBuilder):
+
+    def __init__(self, run):
+        self.run = run
+        self.fresh = True
+
+
+    def new_paragraph(
+        self,
+        paragraph_type : DocumentBuilder.ParagraphType=None,
+        paragraph_level : int=0
+    ):
+        if self.fresh:
+            self.fresh = False
+            self.run.text = ''
+        else:
+            self.run.add_break()
+
+
+    def add_run(self, text : str, bold : bool=None, italic : bool=None, pre : bool=None):
+        self.run.text = self.run.text + text
+
+
+    def add_hyperlink(self, text : str, link : str, bold : bool=None, italic : bool=None, pre : bool=None):
+        self.run.text = self.run.text + "Link {0}: {1}".format(text, link)
+
+
 class TextSupplier:
     def __init__(self):
         pass
     def set_plain_text(self, run, field_name : str):
-        print("replacing", field_name, "in", run)
-        run.text = "replacement for {0}!".format(field_name)
+        PlainTextDocxBuilder(run).render_markdown("Here is **some** markdown _for_ `you`.\n\n* bullet\n1. second bullet")
     def set_rich_text(self, paragraph, field_name : str):
-        print("paragraph for", field_name)
+        DocxBuilder(paragraph).render_markdown("Here is **some** markdown _for_ `you`.\n\n* bullet\n1. second bullet")
         paragraph.clear()
-        paragraph.add_run("Here is some ")
-        paragraph.add_run("replacement").italic = True
-        paragraph.add_run(" text for " + field_name + "!").bold = True
 
 
 class FieldParser:
@@ -74,10 +150,8 @@ class FieldParser:
             mergefield_result = mergefield_re.fullmatch(instr.text)
             if mergefield_result:
                 self.field_name = mergefield_result.group(1)
-                print(self.field_name)
             return
         if is_fld_end(run):
-            print("end", self.field_name, self.text_run)
             self.begin = None
             return
         if self.text_run is None and is_text(run):
