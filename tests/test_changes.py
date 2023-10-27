@@ -129,6 +129,10 @@ def test_same_items_with_changes(
     # Arrange
     input_data = single_requirement
     input_data[0]["title"] = "Old title"
+    input_data[0]["description"] = (
+        "Warfarin dose should be calculated based on patient age, gender and  weight.\n"
+        "Some extra information..."
+    )
     store = qw_store_builder(input_data)
     handler = handler_with_single_requirement(store)
     # Act

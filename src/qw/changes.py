@@ -2,7 +2,9 @@
 from collections import defaultdict
 
 from loguru import logger
+from rich.console import Console
 from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
 from qw.design_stages.main import DesignStages, get_local_stages, get_remote_stages
 from qw.local_store.main import LocalStore
@@ -77,20 +79,23 @@ class ChangeHandler:
         local_item: DesignStages,
         remote_item: DesignStages,
     ):
-        lines = []
+        table = Table(
+            title=f"Changes found between local and remote data for item {internal_id}:",
+            show_lines=True,
+            expand=True,
+        )
+        table.add_column("Field", justify="right", style="cyan")
+        table.add_column("Local", justify="left", style="magenta")
+        table.add_column(
+            f"{self._service.username}/{self._service.reponame}",
+            justify="left",
+            style="green",
+        )
         for field, differences in diff.items():
-            lines.append(
-                f"Changes found between local and remote data for item {internal_id}:",
-            )
-            lines.append(f"{field} Local:")
-            lines.append(differences["self"])
-            lines.append("")
-            lines.append(
-                f"{field} {self._service.username}/{self._service.reponame}:",
-            )
-            lines.append(differences["other"])
-            lines.append("\n")
-        logger.info("\n".join(lines))
+            table.add_row(field, differences["self"], differences["other"])
+
+        console = Console()
+        console.print(table)
         response = Prompt.ask(
             "Would you like to do",
             choices=[
