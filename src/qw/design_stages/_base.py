@@ -22,6 +22,10 @@ class DesignBase(ABC):
         self.remote_item_type: RemoteItemType | None = None
         self.stage: DesignBase | None = None
 
+    def __repr__(self):
+        """User-friendly representation of Design stage class."""
+        return f"<{self.__class__.__name__} #{self.internal_id}: {self.title}>"
+
     def _validate_required_fields(self):
         not_required = ["not_required_fields", *self.not_required_fields]
         for field, value in self.__dict__.items():

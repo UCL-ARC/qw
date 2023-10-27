@@ -24,12 +24,13 @@ class ChangeHandler:
         paired = self._pair_remote_and_local()
 
         output_items = []
-        for internal_id, pair in paired.items():
+        for _internal_id, pair in paired.items():
             remote_item: DesignStages | None = pair.get("remote")
             local_item: DesignStages | None = pair.get("local")
             if not local_item:
-                # TODO add nice representation of DesignStage so we can have a summary by printing that
-                logger.info(f"New remote item: {remote_item}")
+                logger.info(
+                    f"New remote item: {remote_item} will be saved to local store.",
+                )
                 output_items.append(remote_item)
                 continue
 
@@ -45,7 +46,6 @@ class ChangeHandler:
             output_items.append(
                 self._prompt_for_version_change(
                     diff,
-                    internal_id,
                     local_item,
                     remote_item,
                 ),
@@ -75,12 +75,11 @@ class ChangeHandler:
     def _prompt_for_version_change(
         self,
         diff: dict[str, dict],
-        internal_id: int,
         local_item: DesignStages,
         remote_item: DesignStages,
     ):
         table = Table(
-            title=f"Changes found between local and remote data for item {internal_id}:",
+            title=f"Changes detected for {local_item}:",
             show_lines=True,
             expand=True,
         )
