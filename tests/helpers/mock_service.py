@@ -50,12 +50,12 @@ class FileSystemIssue(Issue):
 class FileSystemService(GitService):
     """The FileSystem Service."""
 
-    def __init__(self, root_dir: Path | None = None):
+    def __init__(self, target_dir: str, root_dir: Path | None = None):
         """Set up mocked GitHub service reading from local filesystem."""
         super().__init__({"user_name": "file", "repo_name": "system"})
         if not root_dir:
             root_dir = Path(__file__).parents[1] / "resources" / "design_stages"
-        self.root_dir = root_dir
+        self.resource_path = root_dir / target_dir
 
     def get_issue(self, number: int):
         """Get the issue with the specified number."""
@@ -73,5 +73,5 @@ class FileSystemService(GitService):
     @property
     def issues(self):
         """Get all issues in the root path."""
-        mdx_files = sorted(self.root_dir.glob("*/*.mdx"))
+        mdx_files = sorted(self.resource_path.glob("*.mdx"))
         return [FileSystemIssue(file) for file in mdx_files]

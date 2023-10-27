@@ -28,14 +28,13 @@ def test_unknown_type_from_json(dict_minimal_requirement: dict):
         from_json(unknown_json_dump)
 
 
-def test_filesystem_service_builds_issues():
+def test_filesystem_service_builds_requirement():
     """
-    File system service should load issues from test resources directory.
+    Given a single requirement is serialised to file and a filesystem service is built for the resource directory.
 
-    Given no parent directory has been defined and a filesystem service has been created
-    When the issues are parsed from the service
-    Then there should be at least one DesignStage from the service
+    When the requirement is parsed from the service
+    Then there should be one Requirement from the service
     """
-    service = FileSystemService()
+    service = FileSystemService("single_requirement")
     stages = get_remote_stages(service)
-    assert stages
+    assert len(stages) == 1
