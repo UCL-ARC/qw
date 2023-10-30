@@ -1,9 +1,12 @@
 """ Merges data into output documents """
+import copy
 import docx
+from loguru import logger
+from lxml.etree import QName
+from pathlib import Path
 import re
 
-from md import DocumentBuilder
-from lxml.etree import Element, QName
+from md import DocumentBuilder, text_under_heading
 
 def first_key(ds : list[dict]):
     for d in ds:
@@ -44,7 +47,9 @@ class DocxBuilder(DocumentBuilder):
         paragraph_type : DocumentBuilder.ParagraphType=None,
         paragraph_level : int=0
     ):
-        self.paragraph = self.initial_paragraph.insert_paragraph_before(style=None)
+        self.paragraph = self.initial_paragraph.insert_paragraph_before(
+            style=None
+        )
 
         num_id = None
         if paragraph_type == DocumentBuilder.ParagraphType.LIST_UNORDERED:
@@ -113,12 +118,23 @@ class PlainTextDocxBuilder(DocumentBuilder):
 
 class TextSupplier:
     def __init__(self):
-        pass
+        file = Path(__file__).parent.parent.parent / "tests" / "resources" / "markdown" / "test_data.md"
+        md = file.read_text()
+        self.fields = {
+            'software-requirement-id': text_under_heading(md, "ID"),
+            'software-requirement-name': text_under_heading(md, "Name"),
+            'software-requirement-description': text_under_heading(md, "Description"),
+            'system-requirement-id': text_under_heading(md, "System requirements")
+        }
     def set_plain_text(self, run, field_name : str):
-        PlainTextDocxBuilder(run).render_markdown("Here is **some** markdown _for_ `you`.\n\n* bullet\n1. second bullet")
+        value = self.fields.get(field_name)
+        if value:
+            PlainTextDocxBuilder(run).render_markdown(value)
     def set_rich_text(self, paragraph, field_name : str):
-        DocxBuilder(paragraph).render_markdown("Here is **some** markdown _for_ `you`.\n\n* bullet\n1. second bullet")
-        paragraph.clear()
+        value = self.fields.get(field_name)
+        if value:
+            DocxBuilder(paragraph).render_markdown(value)
+            paragraph.clear()
 
 
 class FieldParser:
@@ -156,10 +172,22 @@ class FieldParser:
             return
         if self.text_run is None and is_text(run):
             self.text_run = run
+    def parse_hyperlink(self, hyperlink):
+        """
+        Hyperlinks do not have fields in them.
+        """
+        self.paragraph_is_only_field = False
     def parse(self, paragraph):
-        ##TODO: also do hyperlinks
-        for r in paragraph.runs:
-            self.parse_run(r)
+        for bit in paragraph.iter_inner_content():
+            if isinstance(bit, docx.text.paragraph.Run):
+                self.parse_run(bit)
+            elif isinstance(bit, docx.text.paragraph.Hyperlink):
+                self.parse_hyperlink(bit)
+            else:
+                logger.warning(
+                    'Internal error: Part of a paragraph that is'
+                    ' neither a Run nor a Hyperlink'
+                )
         self.replace_paragraph(paragraph)
     def close(self):
         self.replace_text_run()
@@ -172,6 +200,30 @@ class FieldParser:
 class Document:
     def __init__(self, templateFile : str) -> None:
         self.doc = docx.Document(templateFile)
+        self.supplier = TextSupplier()
+    def interpolate_paragraph(self, paragraph):
+        with FieldParser(self.supplier) as fp:
+            fp.parse(paragraph)
+    def interpolate_table(self, table):
+        for row in table.rows:
+            for cell in row.cells:
+                # tables-in-tables is a bit tricky with this API
+                for p in cell.paragraphs:
+                    self.interpolate_paragraph(p)
+    def interpolate_section(self, section):
+        if isinstance(section, docx.text.paragraph.Paragraph):
+            self.interpolate_paragraph(section)
+        elif isinstance(section, docx.table.Table):
+            self.interpolate_table(section)
+        elif isinstance(section, docx.section.Section):
+            for subsection in section.iter_inner_content():
+                self.interpolate_section(subsection)
+        else:
+            logger.warning(
+                'Was not expecting subsection type {0}'. format(
+                    type(section)
+                )
+            )
     def write(self, outputFile : str, simple : dict[str, str]={}, tables : list[list[dict[str, str]]]=[]) -> None:
         """
         Write out a document based on the template.
@@ -186,11 +238,8 @@ class Document:
         represented by a dict of names of fields to replace to
         the text to replace with.
         """
-        supplier = TextSupplier()
-        ##TODO: also do tables
-        for p in self.doc.paragraphs:
-            with FieldParser(supplier) as fp:
-                fp.parse(p)
+        for section in self.doc.sections:
+            self.interpolate_section(section)
         self.doc.save(outputFile)
     def close(self):
         pass

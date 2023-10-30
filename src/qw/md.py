@@ -136,7 +136,7 @@ class DocumentBuilder(ABC):
                 for j in range(0, len(bolds2), 2):
                     self.render_markdown_bold_run(bolds2[j], bold=None)
                     if j + 1 < len(bolds2):
-                        self.render_markdown_bold_run(bolds[j + 1], bold=True)
+                        self.render_markdown_bold_run(bolds2[j + 1], bold=True)
             if i + 1 < len(bolds):
                 self.render_markdown_bold_run(bolds[i + 1], bold=True)
 
