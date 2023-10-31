@@ -21,6 +21,11 @@ class DesignBase(ABC):
         self.internal_id: int | None = None
         self.remote_item_type: RemoteItemType | None = None
         self.stage: DesignBase | None = None
+        self.version = 1
+
+    def __repr__(self):
+        """User-friendly representation of Design stage class."""
+        return f"<{self.__class__.__name__} #{self.internal_id}: {self.title}>"
 
     def _validate_required_fields(self):
         not_required = ["not_required_fields", *self.not_required_fields]
@@ -64,6 +69,8 @@ class DesignBase(ABC):
         """
         Compare the data of each field with another instance,  returning the fields with differences only.
 
+        Ignores the version as this is only stored locally.
+
         :param other: Another instance of the same class
         :raises ValueError: if other is not the same class as self.
         :return: A dictionary with each field that was different, with the `self` and `other` string values.
@@ -74,6 +81,8 @@ class DesignBase(ABC):
 
         output_fields = {}
         for field_name in self.__dict__:
+            if field_name == "version":
+                continue
             self_data = getattr(self, field_name)
             other_data = getattr(other, field_name)
 

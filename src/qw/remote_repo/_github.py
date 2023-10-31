@@ -4,6 +4,7 @@ import github3
 import keyring
 
 import qw.remote_repo.service
+from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
 
 
@@ -26,7 +27,7 @@ class Issue(qw.remote_repo.service.Issue):
     @property
     def title(self) -> str:
         """Get the title."""
-        return self._issue.title
+        return self._issue.title.strip()
 
     @property
     def labels(self) -> list[str]:
@@ -53,6 +54,9 @@ class GitHubService(qw.remote_repo.service.GitService):
         """Log in with the gh auth token."""
         super().__init__(conf)
         token = keyring.get_password("qw", f"{self.username}/{self.reponame}")
+        if not token:
+            msg = "Could not find a token in keyring."
+            raise QwError(msg)
         self.gh = github3.login(token=token)
 
     def get_issue(self, number: int):

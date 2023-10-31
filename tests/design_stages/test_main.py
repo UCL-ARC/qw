@@ -1,41 +1,40 @@
 """Testing main functionality of design stages."""
-import json
 
 import pytest
 
 from qw.base import QwError
-from qw.design_stages.main import Requirement, from_json, from_service
+from qw.design_stages.main import Requirement, get_local_stages, get_remote_stages
 from tests.helpers.mock_service import FileSystemService
 
 
 def test_build_from_dict(
     dict_minimal_requirement: dict,
     minimal_requirement: Requirement,
+    qw_store_builder,
 ):
-    """Ensure that an instance can be serialised without any prior knowledge of the type."""
-    json_data = json.dumps([dict_minimal_requirement])
-    built_from_json = from_json(json_data)
-    assert len(built_from_json) == 1
-    assert isinstance(built_from_json[0], Requirement)
-    assert minimal_requirement.diff(built_from_json[0]) == {}
+    """Ensure that an instance can be deserialised without any prior knowledge of the type."""
+    store = qw_store_builder([dict_minimal_requirement])
+    stages = get_local_stages(store)
+    assert len(stages) == 1
+    assert isinstance(stages[0], Requirement)
+    assert minimal_requirement.diff(stages[0]) == {}
 
 
-def test_unknown_type_from_json(dict_minimal_requirement: dict):
-    """An unknown design stage in the dictionary should raise a QwException."""
+def test_unknown_type_from_json(dict_minimal_requirement: dict, qw_store_builder):
+    """An unknown design stage in the input data should raise a QwException."""
     dict_minimal_requirement["stage"] = "unknown"
-    unknown_json_dump = json.dumps([dict_minimal_requirement])
+    store = qw_store_builder([dict_minimal_requirement])
     with pytest.raises(QwError):
-        from_json(unknown_json_dump)
+        get_local_stages(store)
 
 
-def test_filesystem_service_builds_issues():
+def test_filesystem_service_builds_requirement():
     """
-    File system service should load issues from test resources directory.
+    Given a single requirement is serialised to file and a filesystem service is built for the resource directory.
 
-    Given no parent directory has been defined and a filesystem service has been created
-    When the issues are parsed from the service
-    Then there should be at least one DesignStage from the service
+    When the requirement is parsed from the service
+    Then there should be one Requirement from the service
     """
-    service = FileSystemService()
-    stages = from_service(service)
-    assert stages
+    service = FileSystemService("single_requirement")
+    stages = get_remote_stages(service)
+    assert len(stages) == 1

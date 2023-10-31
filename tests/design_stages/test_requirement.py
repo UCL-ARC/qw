@@ -4,7 +4,6 @@ import copy
 import pytest
 
 from qw.base import QwError
-from qw.design_stages.categories import DesignStage
 from qw.design_stages.main import Requirement
 
 
@@ -20,23 +19,6 @@ def test_serialise(
     Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
     """
     assert minimal_requirement.to_dict() == dict_minimal_requirement
-
-
-def test_deserialisation(dict_minimal_requirement: dict) -> None:
-    """
-    Ensure deserialisation.
-
-    Given a requirement instance with each required field being set to "qw_{field_name}"
-    When this is serialised to json
-    Then the output string should be a json representation of each required field with the value as "qw_{field_name}"
-    """
-    requirement = Requirement.from_dict(dict_minimal_requirement)
-    requirement._validate_required_fields()
-
-    assert requirement.title == "qw_title"
-    assert requirement.description == "qw_description\n\nover\nlines"
-    assert requirement.internal_id == 1
-    assert requirement.stage == DesignStage.REQUIREMENT
 
 
 def test_required_fields() -> None:

@@ -7,14 +7,15 @@ from qw.design_stages.main import Requirement
 
 @pytest.fixture()
 def dict_minimal_requirement() -> dict:
-    """JSON dump of minimal requirement."""
+    """Build dict of minimal requirement."""
     return {
-        "title": "qw_title",
-        "description": "qw_description\n\nover\nlines",
-        "internal_id": 1,
+        "title": "Calculate warfarin",
+        "description": "Warfarin dosage should be calculated using based on patient age, gender and weight",
+        "internal_id": 6,
         "remote_item_type": "issue",
         "stage": "requirement",
-        "user_need": None,
+        "user_need": "#5",
+        "version": 1,
     }
 
 
@@ -22,8 +23,10 @@ def dict_minimal_requirement() -> dict:
 def minimal_requirement() -> Requirement:
     """Python object for minimal requirement."""
     requirement = Requirement()
-    requirement.title = "qw_title"
-    requirement.description = "qw_description\n\nover\nlines"
-    requirement.internal_id = 1
+    requirement.title = "Calculate warfarin"
+    requirement.description = "Warfarin dosage should be calculated using based on patient age, gender and weight"
+    requirement.internal_id = 6
+    requirement.user_need = "#5"
+    requirement.version = 1
     requirement._validate_required_fields()
     return requirement

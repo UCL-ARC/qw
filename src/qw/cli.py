@@ -4,7 +4,6 @@ The qw (Quality Workflow) tool.
 Helps enforce regulatory compliance for projects managed on GitHub.
 """
 
-import json
 import sys
 from enum import Enum
 from typing import Annotated, Optional
@@ -14,11 +13,11 @@ import typer
 from loguru import logger
 
 from qw.base import QwError
+from qw.changes import ChangeHandler
+from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
     Service,
-    find_aunt_dir,
-    get_configuration,
     get_repo_url,
     hostname_to_service,
     remote_address_to_host_user_repo,
@@ -88,63 +87,36 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    git_dir = find_aunt_dir(
-        ".git",
-        "We are not in a git project, so we cannot initialize!",
-    )
-    base = git_dir.parent
-    gitrepo = git.Repo(base)
+    store = LocalStore()
+    gitrepo = git.Repo(store.base_dir)
     repo = get_repo_url(gitrepo, repo)
-    qw_dir = base / ".qw"
-    logger.debug(
-        ".qw directory is '{dir}'",
-        dir=qw_dir,
-    )
-    if qw_dir.is_file():
-        msg = (
-            ".qw file exists, which is blocking us from making"
-            " a .qw directory. Please delete it!"
-        )
-        raise QwError(
-            msg,
-        )
-    if not qw_dir.is_dir():
-        qw_dir.mkdir()
-    elif not force:
-        msg = (
-            ".qw directory already exists! Use existing"
-            " configuration or use --force flag to reinitialize!"
-        )
-        raise QwError(
-            msg,
-        )
+    store.get_or_create_qw_dir(force=force)
     (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
         service = hostname_to_service(host)
-    logger.debug(
-        "service, owner, repo: {service}, {owner}, {repo}",
-        service=str(service),
-        owner=username,
-        repo=reponame,
-    )
-    conf = {
-        "repo_url": repo,
-        "repo_name": reponame,
-        "user_name": username,
-        "service": str(service),
-    }
-    conf_file_name = qw_dir / "conf.json"
-    with conf_file_name.open("w") as conf_file:
-        json.dump(conf, conf_file, indent=2)
+    store.write_to_config(repo, reponame, service, username)
 
 
 @app.command()
 def check():
     """Check whether all the traceability information is present."""
-    conf = get_configuration()
+    store = LocalStore()
+    conf = store.read_configuration()
     service = get_service(conf)
     logger.info(str(conf))
     logger.info(service.get_issue(1).title)
+
+
+@app.command()
+def freeze():
+    """Freeze the state of remote design stages and update local store."""
+    store = LocalStore()
+    conf = store.read_configuration()
+    service = get_service(conf)
+    change_handler = ChangeHandler(service, store)
+    to_save = change_handler.combine_local_and_remote_items()
+    store.write_local_data([x.to_dict() for x in to_save])
+    logger.info("Finished freeze")
 
 
 if __name__ == "__main__":

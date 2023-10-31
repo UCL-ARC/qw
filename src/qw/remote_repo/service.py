@@ -5,8 +5,6 @@ Abstract Service (such as github or gitlab) in which
 the project managment interest resides.
 """
 
-import json
-import pathlib
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -23,49 +21,6 @@ class Service(str, Enum):
     TEST = "test"
     GITHUB = "github"
     GITLAB = "gitlab"
-
-
-def find_aunt_dir(name: str, error_msg: str) -> pathlib.Path:
-    """
-    Find a directory within this or some ancestor directory.
-
-    Returns the directory with the required name in the closest
-    ancestor of the current working directory, or None if there is no
-    such directory (the daughter of an ancestor is a great^n aunt).
-    """
-    d = pathlib.Path.cwd()
-    while True:
-        p = d / name
-        if p.is_dir():
-            return p
-        if d.name == "":
-            raise QwError(
-                error_msg,
-            )
-        d = d.parent
-
-
-def find_conf_dir() -> pathlib.Path:
-    """Return the .qw directory of the project we are in."""
-    return find_aunt_dir(
-        ".qw",
-        "Could not find a configuration directory, please initialize with `qw init`",
-    )
-
-
-def get_configuration() -> dict:
-    """Get the configuration (as a dict) from the .qw/conf.json file."""
-    conf_file_name = find_conf_dir() / "conf.json"
-    if not conf_file_name.is_file():
-        msg = (
-            "Could not find a configuration directory, please"
-            " initialize with `qw init`"
-        )
-        raise QwError(
-            msg,
-        )
-    with conf_file_name.open() as conf:
-        return json.load(conf)
 
 
 def get_repo_url(repo: git.Repo, name: str) -> str:
