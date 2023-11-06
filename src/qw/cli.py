@@ -11,9 +11,11 @@ from typing import Annotated, Optional
 import git
 import typer
 from loguru import logger
+from rich.prompt import Prompt
 
 from qw.base import QwError
 from qw.changes import ChangeHandler
+from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
@@ -41,6 +43,8 @@ LOGELEVEL_TO_LOGURU = {
     LogLevel.WARNING: 30,
     LogLevel.ERROR: 40,
 }
+
+store = LocalStore()
 
 
 @app.callback()
@@ -87,7 +91,6 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    store = LocalStore()
     gitrepo = git.Repo(store.base_dir)
     repo = get_repo_url(gitrepo, repo)
     store.get_or_create_qw_dir(force=force)
@@ -99,18 +102,36 @@ def init(
 
 @app.command()
 def check():
-    """Check whether all the traceability information is present."""
-    store = LocalStore()
+    """Check that qw can connect to the remote repository."""
     conf = store.read_configuration()
     service = get_service(conf)
-    logger.info(str(conf))
-    logger.info(service.get_issue(1).title)
+
+    service.check()
+    typer.echo("Can connect to the remote repository 🎉")
+
+
+@app.command()
+def login(*, force: bool = False):
+    """Add access credentials for the remote repository."""
+    conf = store.read_configuration()
+    existing_access_token = get_qw_password(conf["user_name"], conf["repo_name"])
+
+    if existing_access_token and not force:
+        msg = "Access token already exists, rerun with '--force' if you want to override it."
+        raise QwError(msg)
+
+    access_token = Prompt.ask(
+        f"Please copy the access token for {conf['service']}",
+        password=True,
+    )
+
+    set_qw_password(conf["user_name"], conf["repo_name"], access_token)
+    check()
 
 
 @app.command()
 def freeze():
     """Freeze the state of remote design stages and update local store."""
-    store = LocalStore()
     conf = store.read_configuration()
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)

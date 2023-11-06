@@ -178,3 +178,8 @@ class GitService(ABC):
     def issues(self) -> list[Issue]:
         """Get all issues for the repository."""
         ...
+
+    @abstractmethod
+    def check(self):
+        """Check that the credentials can connect to the service."""
+        ...
