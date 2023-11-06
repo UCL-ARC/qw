@@ -4,6 +4,7 @@ from qw.base import QwError
 from qw.local_store.main import LocalStore
 from qw.remote_repo._github import GitHubService
 from qw.remote_repo.service import GitService, Service
+from qw.remote_repo.test_service import FileSystemService
 
 
 def get_service(conf: dict | None = None) -> GitService:
@@ -19,6 +20,9 @@ def get_service(conf: dict | None = None) -> GitService:
         )
     if name == str(Service.GITHUB):
         return GitHubService(conf)
+    if name == str(Service.TEST):
+        return FileSystemService(conf)
+
     msg = f"Do not know how to connect to the {name} service!"
     raise QwError(
         msg,

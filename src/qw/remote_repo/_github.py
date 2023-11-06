@@ -73,7 +73,7 @@ class GitHubService(qw.remote_repo.service.GitService):
             Issue(issue) for issue in self.gh.issues_on(self.username, self.reponame)
         ]
 
-    def check(self):
+    def check(self) -> bool:
         """Check that the credentials can connect to the service."""
         try:
             logger.info(self.issues)
@@ -83,3 +83,4 @@ class GitHubService(qw.remote_repo.service.GitService):
         except AuthenticationFailed as exception:
             msg = "Could not connect to Github, please check that your access token is correct and has not expired"
             raise QwError(msg) from exception
+        return True

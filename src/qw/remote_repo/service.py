@@ -180,6 +180,6 @@ class GitService(ABC):
         ...
 
     @abstractmethod
-    def check(self):
+    def check(self) -> bool:
         """Check that the credentials can connect to the service."""
         ...

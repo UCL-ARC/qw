@@ -30,3 +30,14 @@ def qw_store_builder(empty_local_store) -> Callable[[list[dict]], LocalStore]:
         return empty_local_store
 
     return _add_to_store
+
+
+@pytest.fixture()
+def mock_user_input(monkeypatch):
+    """Mock user input from prompt, uses internal method to be able to take in arguments."""
+
+    def _take_input(responses: list[str]):
+        answers = iter(responses)
+        monkeypatch.setattr("builtins.input", lambda: next(answers))
+
+    return _take_input

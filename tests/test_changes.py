@@ -4,7 +4,7 @@ import pytest
 
 from qw.changes import ChangeHandler
 from qw.design_stages.main import get_remote_stages
-from tests.helpers.mock_service import FileSystemService
+from qw.remote_repo.test_service import FileSystemService
 
 
 @pytest.fixture()
@@ -17,17 +17,6 @@ def single_requirement() -> list[dict]:
     service = FileSystemService("single_requirement")
     stages = get_remote_stages(service)
     return [x.to_dict() for x in stages]
-
-
-@pytest.fixture()
-def mock_user_input(monkeypatch):
-    """Mock user input from prompt, uses internal method to be able to take in arguments."""
-
-    def _take_input(responses: list[str]):
-        answers = iter(responses)
-        monkeypatch.setattr("builtins.input", lambda: next(answers))
-
-    return _take_input
 
 
 def handler_with_single_requirement(store, base_dir=None) -> ChangeHandler:

@@ -117,6 +117,7 @@ def login(*, force: bool = False):
     existing_access_token = get_qw_password(conf["user_name"], conf["repo_name"])
 
     if existing_access_token and not force:
+        # currently shows the existing access token in the stack trace, could delete it here?
         msg = "Access token already exists, rerun with '--force' if you want to override it."
         raise QwError(msg)
 
