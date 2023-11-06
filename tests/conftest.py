@@ -1,4 +1,5 @@
 """Fixtures used by across the entire test suite."""
+import json
 from collections.abc import Callable
 
 import pytest
@@ -11,8 +12,16 @@ def empty_local_store(tmp_path_factory: pytest.TempPathFactory) -> LocalStore:
     """Create tmp dir with .qw child dir, returning a local store instance."""
     repo_dir = tmp_path_factory.mktemp("fake_repo")
     store = LocalStore(repo_dir)
-    store.get_or_create_qw_dir()
-    # Currently no conf.json created, but could create a config if we required it
+    qw_dir = store.get_or_create_qw_dir()
+    config_data = {
+        "repo_url": "git@github.com:local/repo.git",
+        "repo_name": "repo",
+        "user_name": "local",
+        "service": "Service.TEST",
+    }
+    config_path = qw_dir / "conf.json"
+    with config_path.open("w") as handler:
+        json.dump(config_data, handler)
 
     return store
 

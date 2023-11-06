@@ -123,7 +123,6 @@ def login(*, force: bool = False):
 
     access_token = Prompt.ask(
         f"Please copy the access token for {conf['service']}",
-        password=True,
     )
 
     set_qw_password(conf["user_name"], conf["repo_name"], access_token)
