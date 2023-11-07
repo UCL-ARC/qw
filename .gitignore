@@ -161,5 +161,8 @@ cython_debug/
 
 /src/qw/_version.py
 
+# MS Word temporary lock files
+.~lock*
+
 # Our stuff
 .qw/

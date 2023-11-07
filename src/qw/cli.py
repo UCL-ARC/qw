@@ -148,7 +148,8 @@ def release():
         doc.write(
             outputFile="out.docx",
             simple={
-                "system-requirement-description": "a description for you"
+                "system-requirement-description": "a description for you",
+                "software-requirement-description": "a description for your *software* thingy\n1. one\n2. two"
             },
             tables=[[{
                 "system-requirement-id": "1",

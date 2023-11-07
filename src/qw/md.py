@@ -62,9 +62,10 @@ LINK_RE = re.compile(r"\[(.+?)\]\((.+?)\)")
 
 class DocumentBuilder(ABC):
     class ParagraphType(Enum):
-        PREFORMATTED = 10
-        LIST_ORDERED = 11
-        LIST_UNORDERED = 12
+        HEADING = 1
+        PREFORMATTED = 2
+        LIST_ORDERED = 3
+        LIST_UNORDERED = 4
 
     @abstractmethod
     def new_paragraph(
@@ -189,3 +190,27 @@ class DocumentBuilder(ABC):
                     DocumentBuilder.ParagraphType.PREFORMATTED
                 )
                 self.add_run(fenceds[i + 2])
+
+
+class PlainTextBuilder(DocumentBuilder):
+    def __init__(self):
+        self.out = ""
+        self.first = True
+
+    def new_paragraph(self, *args, **kwargs):
+        if self.first:
+            self.first = False
+        else:
+            self.out += "\n"
+
+    def add_run(self, text : str, *args, **kwargs):
+        self.out += text
+
+    def add_hyperlink(self, text : str, link : str, *args, **kwargs):
+        self.out += "{0} <{1}>".format(text, link)
+
+
+def markdown_to_plain_text(markdown : str) -> str:
+    builder = PlainTextBuilder()
+    builder.render_markdown(markdown)
+    return builder.out
