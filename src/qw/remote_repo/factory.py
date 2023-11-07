@@ -1,4 +1,5 @@
 """Factory for making git hosting services."""
+from pathlib import Path
 
 from qw.base import QwError
 from qw.local_store.main import LocalStore
@@ -21,7 +22,7 @@ def get_service(conf: dict | None = None) -> GitService:
     if name == str(Service.GITHUB):
         return GitHubService(conf)
     if name == str(Service.TEST):
-        return FileSystemService("test")
+        return FileSystemService(Path(conf["resource_base"]), "test")
 
     msg = f"Do not know how to connect to the {name} service!"
     raise QwError(

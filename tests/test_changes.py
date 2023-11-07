@@ -1,4 +1,5 @@
 """Test for changes."""
+from pathlib import Path
 
 import pytest
 
@@ -14,14 +15,19 @@ def single_requirement() -> list[dict]:
 
      Useful for writing to tmp filesystem using qw_store_builder.
     """
-    service = FileSystemService("single_requirement")
+    service = FileSystemService(
+        Path(__file__).parent / "resources" / "design_stages",
+        "single_requirement",
+    )
     stages = get_remote_stages(service)
     return [x.to_dict() for x in stages]
 
 
 def handler_with_single_requirement(store, base_dir=None) -> ChangeHandler:
     """Build ChangeHandler with store, and if defined, a base directory."""
-    service = FileSystemService("single_requirement", base_dir)
+    if not base_dir:
+        base_dir = Path(__file__).parent / "resources" / "design_stages"
+    service = FileSystemService(base_dir, "single_requirement")
     return ChangeHandler(service, store)
 
 

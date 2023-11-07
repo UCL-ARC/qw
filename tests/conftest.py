@@ -1,6 +1,7 @@
 """Fixtures used by across the entire test suite."""
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -18,6 +19,7 @@ def empty_local_store(tmp_path_factory: pytest.TempPathFactory) -> LocalStore:
         "repo_name": "repo",
         "user_name": "local",
         "service": "Service.TEST",
+        "resource_base": str(Path(__file__).parent / "resources" / "design_stages"),
     }
     config_path = qw_dir / "conf.json"
     with config_path.open("w") as handler:

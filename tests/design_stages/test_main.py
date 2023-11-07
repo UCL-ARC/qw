@@ -1,4 +1,5 @@
 """Testing main functionality of design stages."""
+from pathlib import Path
 
 import pytest
 
@@ -35,6 +36,9 @@ def test_filesystem_service_builds_requirement():
     When the requirement is parsed from the service
     Then there should be one Requirement from the service
     """
-    service = FileSystemService("single_requirement")
+    service = FileSystemService(
+        Path(__file__).parents[1] / "resources" / "design_stages",
+        "single_requirement",
+    )
     stages = get_remote_stages(service)
     assert len(stages) == 1
