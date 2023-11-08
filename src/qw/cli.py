@@ -19,6 +19,7 @@ from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
+    GitService,
     Service,
     get_repo_url,
     hostname_to_service,
@@ -101,13 +102,14 @@ def init(
 
 
 @app.command()
-def check():
+def check() -> GitService:
     """Check that qw can connect to the remote repository."""
     conf = store.read_configuration()
     service = get_service(conf)
 
     service.check()
     typer.echo("Can connect to the remote repository 🎉")
+    return service
 
 
 @app.command()
@@ -147,6 +149,20 @@ def freeze():
     to_save = change_handler.combine_local_and_remote_items()
     store.write_local_data([x.to_dict() for x in to_save])
     logger.info("Finished freeze")
+
+
+@app.command()
+def configure(
+    force: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Replace existing configuration.",
+        ),
+    ] = False,
+):
+    """Configure remote repository for qw (after initialisation and login credentials added)."""
+    service = check()
+    store.write_templates(service, force=force)
 
 
 if __name__ == "__main__":

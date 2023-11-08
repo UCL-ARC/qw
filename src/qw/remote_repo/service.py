@@ -7,7 +7,9 @@ the project managment interest resides.
 
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from enum import Enum
+from pathlib import Path
 
 import git
 
@@ -167,6 +169,7 @@ class GitService(ABC):
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
+        self.qw_resources = Path(__file__).parents[2] / "resources"
 
     @abstractmethod
     def get_issue(self, number: int) -> Issue:
@@ -179,7 +182,12 @@ class GitService(ABC):
         """Get all issues for the repository."""
         ...
 
+    @property
     @abstractmethod
-    def check(self) -> bool:
-        """Check that the credentials can connect to the service."""
+    def template_paths(self) -> Iterable[Path]:
+        """Paths for templates to copy to the service."""
         ...
+
+    def relative_target_path(self, base_folder: str, resource_path: Path) -> Path:
+        """Find the relative path that a resource should be copied to."""
+        return resource_path.relative_to(self.qw_resources / base_folder)

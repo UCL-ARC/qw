@@ -1,0 +1,27 @@
+name: User need
+description: Create a new user need
+labels: ["qw-user-need"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Let's add a new user need to the project
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the user need
+      placeholder: The user needs...
+    validations:
+      required: true
+  - type: textarea
+    id: design-inputs
+    attributes:
+      label: Design inputs
+      description: If design inputs already exist, enter the github issue number(s) in the form `#3` or `#3 #4`
+      placeholder: "#3 #4"
+  - type: textarea
+    id: other-information
+    attributes:
+      label: Other information
+      description: Any other information, ignored by the QW tool

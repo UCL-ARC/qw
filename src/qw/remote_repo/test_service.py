@@ -1,4 +1,6 @@
 """Mock service functionality to allow reading from local filesystem in tests rather than hitting APIs constantly."""
+from collections.abc import Iterable
+from itertools import chain
 from pathlib import Path
 
 import frontmatter
@@ -77,3 +79,10 @@ class FileSystemService(GitService):
     def check(self):
         """Check that the credentials can connect to the service."""
         return True
+
+    @property
+    def template_paths(self) -> Iterable[Path]:
+        """Paths for templates to copy to the service."""
+        markdown = self.qw_resources.glob("templates/.github/**/*.md")
+        yaml = self.qw_resources.glob("templates/.github/**/*.yml")
+        return chain(markdown, yaml)

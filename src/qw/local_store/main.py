@@ -1,5 +1,6 @@
 """Interaction with the qw local configuration and data storage."""
 import pathlib
+import shutil
 from pathlib import Path
 
 from loguru import logger
@@ -7,7 +8,7 @@ from loguru import logger
 from qw.base import QwError
 from qw.local_store._json import _dump_json, _load_json
 from qw.local_store.directories import find_git_base_dir
-from qw.remote_repo.service import Service
+from qw.remote_repo.service import GitService, Service
 
 
 class LocalStore:
@@ -92,3 +93,29 @@ class LocalStore:
     def write_local_data(self, data: list[dict]):
         """Write to local data file."""
         _dump_json(data, self._data_path)
+
+    def write_templates(self, service: GitService, *, force: bool):
+        """Write templates to local repository."""
+        logger.info("Writing templates to local repository, force={force}", force=force)
+        should_not_exist = []
+        target_paths = []
+        for template in service.template_paths:
+            target_path = self.base_dir / service.relative_target_path(
+                "templates",
+                template,
+            )
+            target_paths.append(target_path)
+            if not force and target_path.exists():
+                should_not_exist.append(target_path)
+
+        if should_not_exist:
+            msg = f"Templates already exists, rerun with '--force' to override existing templates:'n {should_not_exist}"
+            raise QwError(msg)
+
+        for source_path, target_path in zip(
+            service.template_paths,
+            target_paths,
+            strict=True,
+        ):
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(source_path, target_path)
