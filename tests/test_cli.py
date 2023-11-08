@@ -61,8 +61,6 @@ def test_login_pat_exists(mock_user_input, mock_keyvault_with_value):
 
     result = runner.invoke(app, ["login"])
 
-    assert "Access token already exists" in " ".join(result.exception.args)
-    assert result.exit_code != 0
     assert "Access token already exists" in result.stdout
     assert result.exit_code == 0
 
