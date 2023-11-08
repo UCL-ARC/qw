@@ -28,7 +28,7 @@ from qw.remote_repo.service import (
 app = typer.Typer()
 
 
-class LogLevel(Enum):
+class LogLevel(str, Enum):
     """Log Level."""
 
     ERROR = "error"
@@ -54,7 +54,7 @@ def main(
         typer.Option(
             help="Level of logging to output",
         ),
-    ] = None,
+    ] = LogLevel.INFO,
 ):
     """
     Process global options.
