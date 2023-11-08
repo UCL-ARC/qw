@@ -53,16 +53,18 @@ def test_login_pat_exists(mock_user_input, mock_keyvault_with_value):
     Given password already exists in the mocked store.
 
     When login is run without a `--force` flag
-    Then an exception should be thrown
+    Then this should be reported without being overriden
     """
     pw = "I'm a test password"
-    mock_keyvault_with_value([pw, pw])
+    mock_keyvault_with_value([pw])
     mock_user_input([pw])
 
     result = runner.invoke(app, ["login"])
 
     assert "Access token already exists" in " ".join(result.exception.args)
     assert result.exit_code != 0
+    assert "Access token already exists" in result.stdout
+    assert result.exit_code == 0
 
 
 def test_login_force(mock_user_input, mock_keyvault_with_value):
