@@ -111,7 +111,15 @@ def check():
 
 
 @app.command()
-def login(*, force: bool = False):
+def login(
+    *,
+    force: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Replace existing access credentials.",
+        ),
+    ] = False,
+):
     """Add access credentials for the remote repository."""
     conf = store.read_configuration()
     existing_access_token = get_qw_password(conf["user_name"], conf["repo_name"])
