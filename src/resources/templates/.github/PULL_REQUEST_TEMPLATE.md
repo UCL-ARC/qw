@@ -1,7 +1,5 @@
 ### Description
 
-### Description
-
 <!--
    replace with a description used in qw and which issues this addresses.
    e.g. Closes #4 or Addresses part of #3
