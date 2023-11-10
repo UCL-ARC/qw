@@ -1,11 +1,11 @@
-name: Design input
-description: Create a new design input
-labels: ["qw-design-input"]
+name: Requirement
+description: Create a requirement
+labels: ["qw-requirement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Let's add a new design input to the project
+        Let's add a new requirement to the project
   - type: textarea
     id: description
     attributes:
@@ -47,7 +47,7 @@ body:
     id: user-need
     attributes:
       label: Parent user need
-      description: Enter the User need github issue number that the design input contributes to, in the form `#1`
+      description: Enter the User need github issue number that the requirement contributes to, in the form `#1`
       placeholder: "#1"
     validations:
       required: true

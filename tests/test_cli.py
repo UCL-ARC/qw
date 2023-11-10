@@ -110,7 +110,7 @@ def test_configure_adds_templates(mocked_store):
     result = runner.invoke(app, ["configure"])
 
     assert (
-        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "design-input.yml"
+        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
     ).exists()
     assert (mocked_store.base_dir / ".github" / "PULL_REQUEST_TEMPLATE.md").exists()
     assert result.exit_code == 0
@@ -124,7 +124,7 @@ def test_configure_throws_if_templates_exist(mocked_store):
     Then an exception should be thrown and the other templates should not exist
     """
     existing_file = (
-        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "design-input.yml"
+        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
     )
     existing_file.parent.mkdir(parents=True)
     existing_file.write_text("Now I exist.")
@@ -145,7 +145,7 @@ def test_configure_force_templates_exist(mocked_store):
     Then an exception should be thrown and the other templates should not exist
     """
     existing_file = (
-        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "design-input.yml"
+        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
     )
     existing_file.parent.mkdir(parents=True)
     existing_file.write_text("Now I exist.")
