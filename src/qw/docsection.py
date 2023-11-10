@@ -77,7 +77,8 @@ class DocSection:
         self,
         docx,
         from_index=None,
-        outer_level=None
+        outer_level=None,
+        parent=None
     ):
         """
         Sets this DocSection as an empty object.
@@ -86,8 +87,7 @@ class DocSection:
         the start of the document if not.
         The iteration ends at the end of the document or just before
         the first paragraph that has a level equal to or lower than
-        `outer_level`, if set. If `outer_level` is None then
-        iteration ends at the end of the document.
+        outer_level (if not None)
         """
         self.docx = docx
         bodies = docx.element.xpath("w:body")
@@ -96,10 +96,9 @@ class DocSection:
         self.element = bodies[0]
         self.start_index = from_index or 0
         self.end_index = self.start_index
-        self.paragraphs = []
-        self.outer_level = outer_level
-        self.at_end = False
         self.start_level = None
+        self.outer_level = outer_level
+        self.parent=parent
 
     def get_bullet_level(self, element):
         bullets = element.xpath('w:pPr/w:numPr/w:ilvl')
@@ -111,7 +110,7 @@ class DocSection:
                 return 50
         return None
 
-    def get_paragraph_level(self, paragraph):
+    def _get_paragraph_level(self, paragraph):
         # style outline level
         styles = paragraph.xpath('w:pPr/w:pStyle')
         if len(styles) != 0:
@@ -134,45 +133,61 @@ class DocSection:
     def next(self):
         """
         Move to the next section in the document. Returns
-        True if there is a next section, False if not.
+        True if there is a next section at this level, False
+        if not (and so we did not move on).
         """
-        if self.at_end or len(self.element) <= self.end_index:
+        if self.at_document_end():
             return False
         self.start_index = self.end_index
         p = self.element[self.start_index]
-        self.paragraphs = [p]
-        self.start_level = self.get_paragraph_level(p)
+        level = self._get_paragraph_level(p)
+        if self.outer_level is not None and level <= self.outer_level:
+            # We have finished this run of sections at this level
+            return False
+        if self.start_level is None or level < self.start_level:
+            self.start_level = level
         p = p.getnext()
         self.last_head_paragraph_index = self.start_index
         self.end_index += 1
         while p is not None:
-            level = self.get_paragraph_level(p)
+            level = self._get_paragraph_level(p)
             # Have we reached the end of the section?
             if level <= self.start_level:
-                # Have we reached the end of the outer section?
-                if self.outer_level is not None and level <= self.outer_level:
-                    self.at_end = True
+                logger.debug("Section {0} - {1} (hit level {2} <= {3})", self.start_index, self.end_index, level, self.start_level)
                 return True
-            self.paragraphs.append(p)
             self.end_index += 1
             p = p.getnext()
+        logger.debug("Section {0} - {1} (end of document)", self.start_index, self.end_index)
         return True
 
+    def at_document_end(self):
+        return len(self.element) <= self.end_index
+
     def deeper(self) -> Self | None:
-        if len(self.paragraphs) < 2:
+        if self.end_index - self.start_index < 2:
             return None
-        return DocSection(self.docx, self.start_index + 1, self.start_level)
+        return DocSection(
+            self.docx,
+            from_index=self.start_index + 1,
+            outer_level=self.start_level,
+            parent=self
+        )
 
     def duplicate(self):
         """
         Adds a copy of this section after it.
         """
-        if not self.paragraphs:
-            return
-        index = self.index
-        for p in copy.deepcopy(self.paragraphs):
-            self.element.insert(index, p)
-            index += 1
+        length = self.end_index - self.start_index
+        for i in range(length):
+            p = copy.deepcopy(self.element[self.start_index + i])
+            self.element.insert(self.end_index + i, p)
+        if self.parent is not None:
+            self.parent._paragraph_count_changed(length)
+
+    def _paragraph_count_changed(self, length):
+        self.end_index += length
+        if self.parent is not None:
+            self.parent._paragraph_count_changed(length)
 
     def fields(self) -> set[str]:
         """
@@ -180,9 +195,9 @@ class DocSection:
         paragraph of this section.
         """
         r = set()
-        if len(self.paragraphs) == 0:
+        if self.end_index == self.start_index:
             return r
-        for instr in self.paragraphs[0].xpath('*/w:instrText'):
+        for instr in self.element[self.start_index].xpath('*/w:instrText'):
             merge = MERGEFIELD_RE.fullmatch(instr.text)
             if merge is not None:
                 r.add(merge.group(1))
@@ -191,12 +206,16 @@ class DocSection:
     def paragraph_is_only_field(self) -> bool:
         """
         Returns True if there is exactly one field in the first
-        paragraph of this section (with no other text).
+        paragraph of this section (with no other text) and it is
+        normal body text
         """
-        if len(self.paragraphs) == 0:
+        if self.end_index == self.start_index:
+            return False
+        paragraph = self.element[self.start_index]
+        if self._get_paragraph_level(paragraph) != 0:
             return False
         is_in_field = False
-        for run in self.paragraphs[0].xpath('w:r'):
+        for run in paragraph.xpath('w:r'):
             if is_fld_begin(run):
                 is_in_field = True
             else:
@@ -205,6 +224,21 @@ class DocSection:
                 if is_fld_end(run):
                     is_in_field = False
         return True
+
+    def remove_nonhead_paragraphs(
+        self
+    ):
+        """
+        Remove all but the head paragraph of this section
+        """
+        start = self.start_index + 1
+        length = self.end_index - start
+        if length < 0:
+            return
+        for i in range(length):
+            self.element.remove(self.element[start])
+        if self.parent:
+            self.parent._paragraph_count_changed(-length)
 
     def replace_head_paragraph(
         self,
@@ -218,7 +252,7 @@ class DocSection:
         `level` is the level of the heading (0 = Heading 1)
         or bullet/numbered list element (0 = top)
         """
-        p = self.paragraphs[0]
+        p = self.element[self.start_index]
         p.clear()
         self._add_paragraph_style(typ, level, p)
 
@@ -288,7 +322,7 @@ class DocSection:
         """
         if not text:
             return
-        p = self.paragraphs[self.last_head_paragraph_index - self.start_index]
+        p = self.element[self.last_head_paragraph_index]
         r = p.makeelement(TAG_R)
         p.append(r)
         rPr = p.makeelement(TAG_RPR)
@@ -297,10 +331,10 @@ class DocSection:
         if italic:
             rPr.append(rPr.makeelement(TAG_I))
         if pre:
-            rPr.append(rPr.makeelement(TAG_RFONTS), {
+            rPr.append(rPr.makeelement(TAG_RFONTS, {
                 ATTRIB_ASCII: PREFORMATTED_FONT_NAME,
                 ATTRIB_HANSI: PREFORMATTED_FONT_NAME
-            })
+            }))
         r.append(rPr)
         self._add_plain_text(r, text)
 
@@ -336,7 +370,7 @@ class DocSection:
         text : str,
         link : str
     ):
-        p = self.paragraphs[self.last_head_paragraph_index - self.start_index]
+        p = self.element[self.last_head_paragraph_index]
         rid = self._get_link_id(link)
         hyperlink = p.makeelement(TAG_R, { TAG_R_ID: rid })
         r = p.append(hyperlink)
@@ -357,7 +391,6 @@ class DocSection:
         p = self.element.makeelement(TAG_P)
         self._add_paragraph_style(typ, level, p)
         self.last_head_paragraph_index += 1
-        self.paragraphs.insert(self.last_head_paragraph_index - self.start_index, p)
         self.element.insert(
             self.last_head_paragraph_index,
             p
@@ -381,7 +414,7 @@ class DocSection:
             node = next
 
     def replace_field(self, name : str, plain_text : str):
-        for instr in self.paragraphs[0].xpath('*/w:instrText'):
+        for instr in self.element[self.start_index].xpath('*/w:instrText'):
             merge = MERGEFIELD_RE.fullmatch(instr.text)
             if merge is not None:
                 if merge.group(1) == name:

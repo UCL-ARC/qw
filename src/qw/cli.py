@@ -147,23 +147,55 @@ def release():
     with qw.mergedoc.load_template("tests/resources/msword/test_template.docx") as doc:
         doc.write(
             outputFile="out.docx",
-            simple={
-                "system-requirement-description": "a description for you",
-                "software-requirement-description": "a description for your *software* thingy\n1. one\n2. two"
-            },
-            tables=[[{
-                "system-requirement-id": "1",
-                "system-requirement-name": "one"
-            },{
-                "system-requirement-id": "3",
-                "system-requirement-name": "three"
-            },{
-                "system-requirement-id": "5",
-                "system-requirement-name": "five"
-            },{
-                "system-requirement-id": "7",
-                "system-requirement-name": "five"
-            }]]
+            data={
+                "soup": [{
+                    "id": "34",
+                    "name": "Python",
+                    "description": "The **Python** programming language"
+                }, {
+                    "id": "75",
+                    "name": "python-docx",
+                    "description": "The *Python* module `python-docx`.\n* provides access to MS Word Documents\n* Isn't very good"
+                }],
+                "software-requirement": [{
+                    "id": "101",
+                    "name": "Dose input",
+                    "description": "Allow the user to input the *dose*.",
+                    "system-requirement": "31"
+                }, {
+                    "id": "102",
+                    "name": "Dose measurement",
+                    "description": "The *hardware* must measure the dose given.",
+                    "system-requirement": "32",
+                }, {
+                    "id": "103",
+                    "name": "Dose articulation",
+                    "description": "The *hardware* must stop delivering the medicine when dose given meets the dose required.",
+                    "system-requirement": "32",
+                }, {
+                    "id": "104",
+                    "name": "Lock screen",
+                    "description": "The screen should show `locked` when the _lock_ button is pressed",
+                    "system-requirement": "33"
+                }],
+                "system-requirement": [{
+                    "id": "31",
+                    "name": "Dose input",
+                    "description": "User must be able to input the dose"
+                }, {
+                    "id": "32",
+                    "name": "Dose correct",
+                    "description": "Dose must match the input dose"
+                }, {
+                    "id": "33",
+                    "name": "Lockable",
+                    "description": "Device should be easily lockable and only unlockable by the registered user."
+                }, {
+                    "id": "34",
+                    "name": "Something else",
+                    "description": "Are we having **fun** yet?"
+                }]
+            }
         )
 
 
