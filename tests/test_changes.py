@@ -1,10 +1,11 @@
 """Test for changes."""
+from pathlib import Path
 
 import pytest
 
 from qw.changes import ChangeHandler
 from qw.design_stages.main import get_remote_stages
-from tests.helpers.mock_service import FileSystemService
+from qw.remote_repo.test_service import FileSystemService
 
 
 @pytest.fixture()
@@ -14,25 +15,19 @@ def single_requirement() -> list[dict]:
 
      Useful for writing to tmp filesystem using qw_store_builder.
     """
-    service = FileSystemService("single_requirement")
+    service = FileSystemService(
+        Path(__file__).parent / "resources" / "design_stages",
+        "single_requirement",
+    )
     stages = get_remote_stages(service)
     return [x.to_dict() for x in stages]
 
 
-@pytest.fixture()
-def mock_user_input(monkeypatch):
-    """Mock user input from prompt, uses internal method to be able to take in arguments."""
-
-    def _take_input(responses: list[str]):
-        answers = iter(responses)
-        monkeypatch.setattr("builtins.input", lambda: next(answers))
-
-    return _take_input
-
-
 def handler_with_single_requirement(store, base_dir=None) -> ChangeHandler:
     """Build ChangeHandler with store, and if defined, a base directory."""
-    service = FileSystemService("single_requirement", base_dir)
+    if not base_dir:
+        base_dir = Path(__file__).parent / "resources" / "design_stages"
+    service = FileSystemService(base_dir, "single_requirement")
     return ChangeHandler(service, store)
 
 

@@ -1,10 +1,11 @@
 """Testing main functionality of design stages."""
+from pathlib import Path
 
 import pytest
 
 from qw.base import QwError
 from qw.design_stages.main import Requirement, get_local_stages, get_remote_stages
-from tests.helpers.mock_service import FileSystemService
+from qw.remote_repo.test_service import FileSystemService
 
 
 def test_build_from_dict(
@@ -35,6 +36,9 @@ def test_filesystem_service_builds_requirement():
     When the requirement is parsed from the service
     Then there should be one Requirement from the service
     """
-    service = FileSystemService("single_requirement")
+    service = FileSystemService(
+        Path(__file__).parents[1] / "resources" / "design_stages",
+        "single_requirement",
+    )
     stages = get_remote_stages(service)
     assert len(stages) == 1
