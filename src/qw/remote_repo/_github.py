@@ -91,6 +91,6 @@ class GitHubService(qw.remote_repo.service.GitService):
     @property
     def template_paths(self) -> Iterable[Path]:
         """Paths for templates to copy to the service."""
-        markdown = self.qw_resources.glob("templates/.github/**/*.md")
-        yaml = self.qw_resources.glob("templates/.github/**/*.yml")
+        markdown = self.qw_resources.glob("templates/.github/**/*.md*")
+        yaml = self.qw_resources.glob("templates/.github/**/*.yml*")
         return chain(markdown, yaml)

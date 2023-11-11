@@ -1,8 +1,11 @@
 """Interaction with the qw local configuration and data storage."""
+import csv
 import pathlib
 import shutil
+from collections import defaultdict
 from pathlib import Path
 
+from jinja2 import Template
 from loguru import logger
 
 from qw.base import QwError
@@ -22,6 +25,7 @@ class LocalStore:
         self.base_dir = base_dir if base_dir else find_git_base_dir()
 
         self.qw_dir = self.base_dir / ".qw"
+        self._requirement_component = RequirementComponents(self.qw_dir)
 
     @property
     def _config_path(self):
@@ -52,10 +56,7 @@ class LocalStore:
     def read_configuration(self) -> dict:
         """Get the configuration (as a dict) from the .qw/conf.json file."""
         if not self._config_path.is_file():
-            msg = (
-                "Could not find a configuration directory, please"
-                " initialize with `qw init`"
-            )
+            msg = "Could not find a configuration directory, please initialize with `qw init`"
             raise QwError(
                 msg,
             )
@@ -68,13 +69,18 @@ class LocalStore:
             return []
         return _load_json(self._data_path)
 
-    def write_to_config(
+    def initialise_qw_files(
         self,
         repo: str,
         reponame: str,
         service: Service,
         username: str,
     ):
+        """Write all configuration files in the qw directory."""
+        self._write_config_file(repo, reponame, service, username)
+        self._requirement_component.write_initial_data_if_not_exists()
+
+    def _write_config_file(self, repo, reponame, service, username):
         """Write configuration to qw config file."""
         logger.debug(
             "service, owner, repo: {service}, {owner}, {repo}",
@@ -104,6 +110,9 @@ class LocalStore:
                 "templates",
                 template,
             )
+            # remove .jinja2 suffix from target
+            if target_path.suffix == ".jinja2":
+                target_path = target_path.with_suffix("")
             target_paths.append(target_path)
             if not force and target_path.exists():
                 should_not_exist.append(target_path)
@@ -118,4 +127,68 @@ class LocalStore:
             strict=True,
         ):
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(source_path, target_path)
+            if target_path.stem == "requirement":
+                self._requirement_component.update_requirements_template(
+                    source_path,
+                    target_path,
+                )
+            else:
+                shutil.copy(source_path, target_path)
+
+
+class RequirementComponents:
+    """Handle customising components for requirements."""
+
+    def __init__(self, qw_dir: Path):
+        """Initialise requirements component."""
+        self._component_file = qw_dir / "components.csv"
+        self._initial_data = {
+            "name": ["System"],
+            "short_code": ["X"],
+            "description": ["Whole system requirements"],
+        }
+        self._component_data = self._initial_data
+        if self._component_file.exists():
+            self._component_data = self._read_component_file(self._component_file)
+
+    def _read_component_file(self, component_file) -> dict[str, list[str]]:
+        with component_file.open("r") as handle:
+            reader = csv.DictReader(handle)
+            return self._parse_csv_data(reader)
+
+    def _parse_csv_data(self, reader):
+        output_data = defaultdict(list)
+        for row in reader:
+            for key in self._initial_data:
+                try:
+                    output_data[key].append(row[key].strip())
+                except KeyError as error:
+                    msg = (
+                        f"Could not find {key} in component specification in"
+                        f"{self._component_file}, please correct the file."
+                    )
+                    raise QwError(msg) from error
+        return output_data
+
+    def write_initial_data_if_not_exists(self):
+        """Write initial data to file path if it doesn't exist already."""
+        if self._component_file.exists():
+            logger.info(
+                "File already exists, not overwriting {path}",
+                self._component_file,
+            )
+            return
+        with self._component_file.open("w") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(self._initial_data.keys())
+            writer.writerows(zip(*self._initial_data.values(), strict=True))
+
+    def update_requirements_template(
+        self,
+        template_source: Path,
+        template_target: Path,
+    ):
+        """Update the requirements with the current component data."""
+        template = Template(template_source.read_text())
+        rendered_text = template.render(components=self._component_data["name"])
+        template_target.write_text(rendered_text)

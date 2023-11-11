@@ -25,7 +25,7 @@ def empty_local_store(tmp_path_factory: pytest.TempPathFactory) -> LocalStore:
     with config_path.open("w") as handler:
         json.dump(config_data, handler)
 
-    return store
+    return LocalStore(repo_dir)
 
 
 @pytest.fixture()

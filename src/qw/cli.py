@@ -98,7 +98,7 @@ def init(
     (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
         service = hostname_to_service(host)
-    store.write_to_config(repo, reponame, service, username)
+    store.initialise_qw_files(repo, reponame, service, username)
 
 
 @app.command()

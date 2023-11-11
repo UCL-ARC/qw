@@ -3,6 +3,7 @@ import pytest
 from typer.testing import CliRunner
 
 from qw.cli import app
+from qw.local_store.main import RequirementComponents
 
 runner = CliRunner()
 
@@ -109,10 +110,39 @@ def test_configure_adds_templates(mocked_store):
     """
     result = runner.invoke(app, ["configure"])
 
-    assert (
+    requirements_template = (
         mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
-    ).exists()
+    )
+    assert requirements_template.exists()
+    assert "options:\n        - System" in requirements_template.read_text()
     assert (mocked_store.base_dir / ".github" / "PULL_REQUEST_TEMPLATE.md").exists()
+    assert result.exit_code == 0
+
+
+def test_configure_adds_requirement_components(mocked_store):
+    """
+    Given no templates exist in git root (tmpdir) and custom components with leading and trailing whitespace.
+
+    When `qw configure` is run
+    Then requirement template should have the component names in the dropdown, without the whitespace.
+    """
+    components_file = mocked_store.qw_dir / "components.csv"
+    components_file.write_text(
+        "name,short_code,description\n System ,X,Whole system requirements\n Fancy new component ,N,new requirements",
+    )
+    # re-initialise requirement component so it reads in new components file
+    mocked_store._requirement_component = RequirementComponents(mocked_store.qw_dir)
+
+    result = runner.invoke(app, ["configure"])
+
+    bullet_point = "        - "
+    component_options = (
+        f"options:\n{bullet_point}System\n{bullet_point}Fancy new component"
+    )
+    requirements_template = (
+        mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
+    )
+    assert component_options in requirements_template.read_text()
     assert result.exit_code == 0
 
 

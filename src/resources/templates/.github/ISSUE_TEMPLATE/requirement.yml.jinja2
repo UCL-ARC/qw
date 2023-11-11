@@ -19,8 +19,8 @@ body:
     attributes:
       label: Component
       description: Which component does this relate to?
-      options:
-        - System
+      options:{% for component in components %}
+        - {{ component }}{% endfor %}
     validations:
       required: true
   - type: dropdown
