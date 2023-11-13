@@ -1,13 +1,16 @@
 """GitHub concrete service."""
+from collections.abc import Iterable
+from itertools import chain
+from pathlib import Path
 
 import github3
+import keyring
 from github3.exceptions import AuthenticationFailed
 from loguru import logger
 
 import qw.remote_repo.service
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
-from qw.local_store.keyring import get_qw_password
 
 
 class Issue(qw.remote_repo.service.Issue):
@@ -55,7 +58,7 @@ class GitHubService(qw.remote_repo.service.GitService):
     def __init__(self, conf):
         """Log in with the gh auth token."""
         super().__init__(conf)
-        token = get_qw_password(self.username, self.reponame)
+        token = keyring.get_password("qw", f"{self.username}/{self.reponame}")
         if not token:
             msg = "Could not find a token in keyring."
             raise QwError(msg)
@@ -84,3 +87,10 @@ class GitHubService(qw.remote_repo.service.GitService):
             msg = "Could not connect to Github, please check that your access token is correct and has not expired"
             raise QwError(msg) from exception
         return True
+
+    @property
+    def template_paths(self) -> Iterable[Path]:
+        """Paths for templates to copy to the service."""
+        markdown = self.qw_resources.glob("templates/.github/**/*.md")
+        yaml = self.qw_resources.glob("templates/.github/**/*.yml")
+        return chain(markdown, yaml)
