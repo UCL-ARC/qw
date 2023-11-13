@@ -51,9 +51,13 @@ qw init --repo github.com:username/reponame --service github
 ```
 
 > INFO: A ".qw" directory has been created
+>
 > INFO: Github actions for qw have been added to your ".github" directory
+>
 > INFO: Templates added to your ".github" directory: "User need", "Requirement", "Design output", "Pull request"
+>
 > INFO: Please commit the files after you have finished your setup
+>
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
 
 If you have a different development flow than pull requests into main/master then edit the `qw` ruleset for the repository,
@@ -137,6 +141,7 @@ qw config --update-remote
 ```
 
 > INFO: Added "Drug dosage (D)" to local components, ensure that the updated file is committed.
+>
 > INFO: Added tag "qw-component-d" to GitHub
 
 ## Configuration using Gitlab
@@ -285,22 +290,31 @@ An example incrementing a tag upon update:
 > - Parent User need: https://github.com/stefpiatek/dummy-medical-software/issues/5
 >
 > Would you like to increment the version? (y/n): <prompt response from user - y>
+>
 > INFO: Updated tag to "qw-v2"
+>
 > INFO: There are 2 design outputs that link to this Requirement, please ensure one of them has the "qw-v2" tag if it resolves the updated
 > information
 >
 > - https://github.com/stefpiatek/dummy-medical-software/pull/7
 > - https://github.com/stefpiatek/dummy-medical-software/pull/12
->   ...
->   INFO: :heavy_check_mark: 12 new QW items added to state
->   INFO: :heavy_check_mark: 47 QW items checked
->   INFO: Please commit the changes in the ".qw" directory
+>
+> ...
+>
+> INFO: :heavy_check_mark: 12 new QW items added to state
+>
+> INFO: :heavy_check_mark: 47 QW items checked
+>
+> INFO: Please commit the changes in the ".qw" directory
 
 Example response when the change is trivial and does not warrant a change in the version of the QW item:
 
 > ...
+>
 > Would you like to increment the version? (y/n): <prompt response from user - n>
+>
 > INFO: Tag kept at "qw-v1", data for the Requirement has been updated to the current state
+>
 > ...
 
 ### Creating a documentation release
@@ -323,8 +337,11 @@ qw release qms_docs
 ```
 
 > Creating a release for QW
+>
 > Creating "qms_docs" directory if it doesn't already exist, and overwriting any previously exported files
+>
 > INFO: :heavy_check_mark: 47 QW items checked
+>
 > INFO: :heavy_check_mark: Documents have been written to the "qms_docs" directory
 
 # FAQ and common issues
@@ -332,13 +349,3 @@ qw release qms_docs
 - Can I import an existing project into QW
   - There's nothing stopping this, though each issue and pull request would need to match the required format, and be tagged appropriately by the
     time you'd like to run a release. This may be a reasonable amount of work and we expect issues may need to be created.
--
-
-# Open questions
-
-- Which document parts are the most useful for export, and would we want the user to be able to edit the template (update styles and placeholder
-  text?)
-- Would the burndown chart be useful to get an overview for development?
-- Gate who can authorise a PR, or can anyone?
-- Should we include a change request at this stage, or keep it with the risk management side of things
-- closed not by a PR - would be useful to get a steer on what is required or most useful
