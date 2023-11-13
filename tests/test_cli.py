@@ -3,7 +3,7 @@ import pytest
 from typer.testing import CliRunner
 
 from qw.cli import app
-from qw.local_store.main import RequirementComponents
+from qw.local_store._repository import RequirementComponents
 
 runner = CliRunner()
 
