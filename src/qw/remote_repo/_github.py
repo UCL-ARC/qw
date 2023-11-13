@@ -79,7 +79,10 @@ class GitHubService(qw.remote_repo.service.GitService):
     def check(self) -> bool:
         """Check that the credentials can connect to the service."""
         try:
-            logger.info(self.issues)
+            logger.info(
+                "There are currently {issues} issues and PRs",
+                issues=len(self.issues),
+            )
         except ConnectionError as exception:
             msg = "Could not connect to Github, please check internet connection"
             raise QwError(msg) from exception

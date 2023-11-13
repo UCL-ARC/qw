@@ -54,8 +54,6 @@ qw init --repo github.com:username/reponame --service github
 >
 > INFO: Github actions for qw have been added to your ".github" directory
 >
-> INFO: Templates added to your ".github" directory: "User need", "Requirement", "Design output", "Pull request"
->
 > INFO: Please commit the files after you have finished your setup
 >
 > INFO: Rulesets and branch protection added for branches matching "main" to "stefpiatek/dummy-medical-software"
@@ -111,7 +109,9 @@ repository configured as the git remote named `upstream`.
   After you've done this, the system will check the personal access token. If you've configured for the remote
   URL <https://github.com/stefpiatek/dummy-medical-software> you would see:
 
-  > INFO: Can access "stefpiatek/dummy-medical-software"
+  > INFO there are currently 27 issues and PRs
+  >
+  > Can connect to remote repository :tada:
 
 ### Setup for a new user, on an existing project that uses QW
 
@@ -137,12 +137,16 @@ Drug dosage,D,Drug dosage calculation module.
 ```
 
 ```shell
-qw config --update-remote
+qw configure
 ```
 
-> INFO: Added "Drug dosage (D)" to local components, ensure that the updated file is committed.
+> INFO: there are currently 27 issues and PRs
 >
-> INFO: Added tag "qw-component-d" to GitHub
+> Can connect to remote repository :tada:
+>
+> INFO: Writing templates to local repository, force=False
+>
+> Local repository updated, please commit the changes made to your local repository.
 
 ## Configuration using Gitlab
 

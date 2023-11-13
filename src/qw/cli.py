@@ -163,6 +163,9 @@ def configure(
     """Configure remote repository for qw (after initialisation and login credentials added)."""
     service = check()
     store.write_templates(service, force=force)
+    typer.echo(
+        "Local repository updated, please commit the changes made to your local repository.",
+    )
 
 
 if __name__ == "__main__":
