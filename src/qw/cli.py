@@ -19,7 +19,6 @@ from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
-    GitService,
     Service,
     get_repo_url,
     hostname_to_service,
@@ -46,6 +45,14 @@ LOGELEVEL_TO_LOGURU = {
 }
 
 store = LocalStore()
+
+
+def _build_and_check_service():
+    conf = store.read_configuration()
+    service = get_service(conf)
+    service.check()
+    typer.echo("Can connect to the remote repository 🎉")
+    return service
 
 
 @app.callback()
@@ -102,14 +109,38 @@ def init(
 
 
 @app.command()
-def check() -> GitService:
-    """Check that qw can connect to the remote repository."""
-    conf = store.read_configuration()
-    service = get_service(conf)
-
-    service.check()
-    typer.echo("Can connect to the remote repository 🎉")
-    return service
+def check(
+    issue: Annotated[
+        Optional[int],
+        typer.Option(
+            help="Issue number to check.",
+        ),
+    ] = None,
+    token: Annotated[
+        Optional[str],
+        typer.Option(
+            help="CI access token to use for checking, otherwise will use local config",
+        ),
+    ] = None,
+    repository: Annotated[
+        Optional[str],
+        typer.Option(
+            help="Repository in form '${organisation}/${repository}'",
+        ),
+    ] = None,
+) -> None:
+    """Check issue or pull request for any QW problems."""
+    if token and repository:
+        logger.info("Using CI access token for authorisation")
+    else:
+        logger.info("Using local qw config for authorisation")
+        _build_and_check_service()
+    # currently dummy function as doesn't need real functionality for configuration
+    if not issue:
+        QwError("No issue number given")
+    logger.success(
+        "Checks complete, stdout will contain a checklist of any problems found",
+    )
 
 
 @app.command()
@@ -137,7 +168,7 @@ def login(
 
         set_qw_password(conf["user_name"], conf["repo_name"], access_token)
 
-    check()
+    _build_and_check_service()
 
 
 @app.command()
@@ -161,8 +192,8 @@ def configure(
     ] = False,
 ):
     """Configure remote repository for qw (after initialisation and login credentials added)."""
-    service = check()
-    store.write_templates(service, force=force)
+    service = _build_and_check_service()
+    store.write_templates_and_ci(service, force=force)
     typer.echo(
         "Local repository updated, please commit the changes made to your local repository.",
     )

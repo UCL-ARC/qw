@@ -98,9 +98,12 @@ class LocalStore:
         """Write to local data file."""
         _dump_json(data, self._data_path)
 
-    def write_templates(self, service: GitService, *, force: bool):
-        """Write templates to local repository."""
-        logger.info("Writing templates to local repository, force={force}", force=force)
+    def write_templates_and_ci(self, service: GitService, *, force: bool):
+        """Write templates and CI configuration to local repository."""
+        logger.info(
+            "Writing templates and CI config to local repository, force={force}",
+            force=force,
+        )
         should_not_exist = []
         target_paths = []
         for template in service.template_paths:
