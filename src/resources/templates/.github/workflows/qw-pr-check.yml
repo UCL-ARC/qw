@@ -26,4 +26,4 @@ jobs:
       - name: qw check
         id: qw
         run: |
-          qw check --review-request ${{ github.event.pull_request.number }}  --repository ${{ github.repository }} > problems.md &&
+          qw check --review-request ${{ github.event.pull_request.number }}  --repository ${{ github.repository }} --token {{ secrets.GITHUB_TOKEN }}
