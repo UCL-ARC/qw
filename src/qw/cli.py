@@ -113,7 +113,13 @@ def check(
     issue: Annotated[
         Optional[int],
         typer.Option(
-            help="Issue number to check.",
+            help="Issue number to check",
+        ),
+    ] = None,
+    review_request: Annotated[
+        Optional[int],
+        typer.Option(
+            help="Review request number to check",
         ),
     ] = None,
     token: Annotated[
@@ -123,7 +129,7 @@ def check(
         ),
     ] = None,
     repository: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             help="Repository in form '${organisation}/${repository}'",
         ),
@@ -136,8 +142,12 @@ def check(
         logger.info("Using local qw config for authorisation")
         _build_and_check_service()
     # currently dummy function as doesn't need real functionality for configuration
-    if not issue:
-        QwError("No issue number given")
+    if issue and review_request:
+        QwError(
+            "Check should only be run on an issue or a review_request, not both at the same time",
+        )
+    if not (issue or review_request):
+        QwError("Nothing given to check, please add a issue or review_request to check")
     logger.success(
         "Checks complete, stdout will contain a checklist of any problems found",
     )
