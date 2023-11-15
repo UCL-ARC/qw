@@ -139,7 +139,9 @@ def check(
     if token and repository:
         logger.info("Using CI access token for authorisation")
     else:
-        logger.info("Using local qw config for authorisation")
+        logger.info(
+            "Using local qw config for authorisation because '--token' and '--repository' were not used",
+        )
         _build_and_check_service()
     # currently dummy function as doesn't need real functionality for configuration
     if issue and review_request:
