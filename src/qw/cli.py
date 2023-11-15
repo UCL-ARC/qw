@@ -129,7 +129,7 @@ def check(
         ),
     ] = None,
     repository: Annotated[
-        str | None,
+        Optional[str],
         typer.Option(
             help="Repository in form '${organisation}/${repository}'",
         ),
