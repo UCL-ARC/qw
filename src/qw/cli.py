@@ -175,7 +175,7 @@ def release():
                 }, {
                     "id": "104",
                     "name": "Lock screen",
-                    "description": "The screen should show `locked` when the _lock_ button is pressed",
+                    "description": "The [screen](https://dictionary.cambridge.org/dictionary/english/screen) should show `locked` when the _lock_ button is pressed",
                     "system-requirement": "33"
                 }],
                 "system-requirement": [{
