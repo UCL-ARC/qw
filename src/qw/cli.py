@@ -209,6 +209,10 @@ def configure(
     typer.echo(
         "Local repository updated, please commit the changes made to your local repository.",
     )
+    service.update_remote(force=force)
+    typer.echo(
+        "Updated remote repository with rules",
+    )
 
 
 if __name__ == "__main__":
