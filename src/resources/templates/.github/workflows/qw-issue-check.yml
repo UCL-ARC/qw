@@ -1,0 +1,116 @@
+name: QW Issue Check
+# Checks to see if issue can be parsed by qw, and any outstanding problems with it.
+# If problems are found, it will update or create a comment with details of the problems
+# If previously problems found and now there are no problems, will update the existing comment
+# If no previous problems found and no problems currently, will do nothing
+
+on:
+  issues:
+    types:
+      - edited
+      - closed
+      - reopened
+
+# Allow GITHUB_TOKEN to write to issues
+permissions:
+  issues: write
+
+jobs:
+  qw-check:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && !contains(github.event.issue.labels.*.name, 'qw-ignore') }}
+    outputs:
+      # "true" if problems found in parsing the issue metadata
+      problems: ${{ steps.qw.outputs.problems }}
+      # existing comment on the pull request
+      comment-id: ${{ steps.fc.outputs.comment-id }}
+    steps:
+      - name: Checkout qw
+        uses: actions/checkout@v3
+        with:
+          repository: UCL-ARC/qw
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install .
+      - name: qw check
+        id: qw
+        run: |
+          echo '## Problems found from last edit by {{ .user }} on {{ .date | date "2006-01-02"}}' > problems-header.md &&
+          echo "" >> problems-header.md  &&
+          qw check --issue ${{ github.event.issue.number }}  --repository ${{ github.repository }} --token {{ secrets.GITHUB_TOKEN }} > problems.md &&
+          mkdir qw &&
+          cat problems-header.md problems.md > qw/problems.md &&
+          if [-z $(cat problems.md)]; then echo "problems=true" >> "$GITHUB_OUTPUT"; else echo "problems=" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@master
+        if: ${{ steps.qw.outputs.problems != "" }}
+        with:
+          name: qw
+          path: qw
+      - name: Find Comment
+        # has output "comment-id"
+        uses: peter-evans/find-comment@v2
+        id: fc
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          comment-author: "github-actions[bot]"
+          body-includes: "## Problems found from last edit"
+
+  comment-problems:
+    runs-on: ubuntu-latest
+    needs: qw-check
+    if: ${{ needs.qw-check.outputs.problems != '' }}
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: qw
+          path: qw
+      - name: Render template
+        id: template
+        uses: chuhlomin/render-template@v1.8
+        with:
+          template: qw/problems.md
+          vars: |
+            user: ${{ github.actor }}
+            date: ${{ github.event.issue.updated_at }}
+      - name: Create Comment
+        if: needs.qw-check.outputs.comment-id == ''
+        uses: peter-evans/create-or-update-comment@v3.1.0
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: ${{ steps.template.outputs.result }}
+      - name: Update Comment
+        if: needs.qw-check.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v3.1.0
+        with:
+          comment-id: ${{ needs.qw-check.outputs.comment-id }}
+          body: ${{ steps.template.outputs.result }}
+          edit-mode: replace
+
+  comment-fixed:
+    runs-on: ubuntu-latest
+    needs: qw-check
+    if: ${{ needs.qw-check.outputs.problems == '' && needs.qw-check.outputs.comment-id != '' }}
+    steps:
+      - name: Create resolved problems markdown file
+        run: |
+          mkdir qw &&
+          echo '## Problems fixed from edit by {{ .user }} on {{ .date | date "2006-01-02"}}' > qw/problems.md
+      - name: Render template
+        id: template
+        uses: chuhlomin/render-template@v1.8
+        with:
+          template: qw/problems.md
+          vars: |
+            user: ${{ github.actor }}
+            date: ${{ github.event.issue.updated_at }}
+      - name: Update Comment
+        if: needs.qw-check.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v3.1.0
+        with:
+          comment-id: ${{ needs.qw-check.outputs.comment-id }}
+          body: ${{ steps.template.outputs.result }}
+          edit-mode: replace

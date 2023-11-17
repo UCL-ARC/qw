@@ -7,12 +7,13 @@ from loguru import logger
 
 from qw.base import QwError
 from qw.local_store._json import _dump_json, _load_json
+from qw.local_store._repository import RequirementComponents
 from qw.local_store.directories import find_git_base_dir
 from qw.remote_repo.service import GitService, Service
 
 
 class LocalStore:
-    """Local storage of configuration and design stages."""
+    """Local storage of configuration, design stages and interaction with the local repository configuration."""
 
     _config_file = "conf.json"
     _data_file = "store.json"
@@ -22,6 +23,7 @@ class LocalStore:
         self.base_dir = base_dir if base_dir else find_git_base_dir()
 
         self.qw_dir = self.base_dir / ".qw"
+        self._requirement_component = RequirementComponents(self.qw_dir)
 
     @property
     def _config_path(self):
@@ -52,10 +54,7 @@ class LocalStore:
     def read_configuration(self) -> dict:
         """Get the configuration (as a dict) from the .qw/conf.json file."""
         if not self._config_path.is_file():
-            msg = (
-                "Could not find a configuration directory, please"
-                " initialize with `qw init`"
-            )
+            msg = "Could not find a configuration directory, please initialize with `qw init`"
             raise QwError(
                 msg,
             )
@@ -68,13 +67,18 @@ class LocalStore:
             return []
         return _load_json(self._data_path)
 
-    def write_to_config(
+    def initialise_qw_files(
         self,
         repo: str,
         reponame: str,
         service: Service,
         username: str,
     ):
+        """Write all configuration files in the qw directory."""
+        self._write_config_file(repo, reponame, service, username)
+        self._requirement_component.write_initial_data_if_not_exists()
+
+    def _write_config_file(self, repo, reponame, service, username):
         """Write configuration to qw config file."""
         logger.debug(
             "service, owner, repo: {service}, {owner}, {repo}",
@@ -94,9 +98,12 @@ class LocalStore:
         """Write to local data file."""
         _dump_json(data, self._data_path)
 
-    def write_templates(self, service: GitService, *, force: bool):
-        """Write templates to local repository."""
-        logger.info("Writing templates to local repository, force={force}", force=force)
+    def write_templates_and_ci(self, service: GitService, *, force: bool):
+        """Write templates and CI configuration to local repository."""
+        logger.info(
+            "Writing templates and CI config to local repository, force={force}",
+            force=force,
+        )
         should_not_exist = []
         target_paths = []
         for template in service.template_paths:
@@ -104,6 +111,9 @@ class LocalStore:
                 "templates",
                 template,
             )
+            # remove .jinja2 suffix from target
+            if target_path.suffix == ".jinja2":
+                target_path = target_path.with_suffix("")
             target_paths.append(target_path)
             if not force and target_path.exists():
                 should_not_exist.append(target_path)
@@ -118,4 +128,10 @@ class LocalStore:
             strict=True,
         ):
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(source_path, target_path)
+            if target_path.stem == "requirement":
+                self._requirement_component.update_requirements_template(
+                    source_path,
+                    target_path,
+                )
+            else:
+                shutil.copy(source_path, target_path)

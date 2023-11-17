@@ -1,1 +1,1 @@
-"""Local storage for qw."""
+"""Interacting with qw local storage, local repository and keychain."""

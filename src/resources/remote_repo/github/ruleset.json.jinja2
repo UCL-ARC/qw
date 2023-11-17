@@ -1,0 +1,42 @@
+{
+  "name": "qw-pr-rules",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "{{ org }}/{{ user }}",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "dismiss_stale_reviews_on_push": false,
+        "required_approving_review_count": 1,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "required_status_checks": [
+          {
+            "context": "qw-check-pr"
+          }
+        ],
+        "strict_required_status_checks_policy": false
+      }
+    }
+  ],
+  "bypass_actors": []
+}
