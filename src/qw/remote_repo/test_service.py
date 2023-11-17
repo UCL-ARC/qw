@@ -86,3 +86,7 @@ class FileSystemService(GitService):
         markdown = self.qw_resources.glob("templates/.github/**/*.md*")
         yaml = self.qw_resources.glob("templates/.github/**/*.yml*")
         return chain(markdown, yaml)
+
+    def update_remote(self, *, force: bool) -> None:
+        """No implementation as no remote."""
+        ...

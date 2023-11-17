@@ -86,6 +86,7 @@ repository configured as the git remote named `upstream`.
   | repository permissions | value          |
   | ---------------------- | -------------- |
   | Actions                | Read and write |
+  | Administration         | Read and write |
   | Contents               | Read-only      |
   | Issues                 | Read and write |
   | Metadata               | Read-only      |
