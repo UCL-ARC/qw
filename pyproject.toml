@@ -17,6 +17,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "Jinja2==3.1.2",
     "github3.py==4.0.1",
     "gitpython==3.1.36",
     "keyring==24.2.0",
