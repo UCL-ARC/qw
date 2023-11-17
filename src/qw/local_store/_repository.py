@@ -49,7 +49,7 @@ class RequirementComponents:
         if self._component_file.exists():
             logger.info(
                 "File already exists, not overwriting {path}",
-                self._component_file,
+                path=self._component_file,
             )
             return
         with self._component_file.open("w") as handle:

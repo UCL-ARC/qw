@@ -1,0 +1,29 @@
+name: QW PR Check
+# Checks to see if a PR can be parsed by qw, and any outstanding problems with it.
+# If problems are found, the action will fail and give an error message of the problems found
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  qw-check:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'qw-ignore') }}
+    steps:
+      - name: Checkout qw
+        uses: actions/checkout@v3
+        with:
+          repository: UCL-ARC/qw
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install .
+      - name: qw check
+        id: qw
+        run: |
+          qw check --review-request ${{ github.event.pull_request.number }}  --repository ${{ github.repository }} --token {{ secrets.GITHUB_TOKEN }}

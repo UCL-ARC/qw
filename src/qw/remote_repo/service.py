@@ -191,3 +191,7 @@ class GitService(ABC):
     def relative_target_path(self, base_folder: str, resource_path: Path) -> Path:
         """Find the relative path that a resource should be copied to."""
         return resource_path.relative_to(self.qw_resources / base_folder)
+
+    @abstractmethod
+    def update_remote(self, *, force: bool) -> None:
+        """Update remote repository with configration for qw tool."""
