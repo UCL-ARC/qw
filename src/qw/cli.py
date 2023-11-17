@@ -1,10 +1,9 @@
 """
 The qw (Quality Workflow) tool.
 
-Helps enforce regulatory compliance for projects managed on github.
+Helps enforce regulatory compliance for projects managed on GitHub.
 """
 
-import json
 import sys
 from enum import Enum
 from typing import Annotated, Optional
@@ -12,16 +11,26 @@ from typing import Annotated, Optional
 import git
 import typer
 from loguru import logger
+from rich.prompt import Prompt
 
-import qw.factory
-import qw.service
 from qw.base import QwError
-import qw.mergedoc
+from qw.changes import ChangeHandler
+from qw.local_store.keyring import get_qw_password, set_qw_password
+from qw.local_store.main import LocalStore
+from qw.mergedoc import load_template
+from qw.remote_repo.factory import get_service
+from qw.remote_repo.service import (
+    GitService,
+    Service,
+    get_repo_url,
+    hostname_to_service,
+    remote_address_to_host_user_repo,
+)
 
 app = typer.Typer()
 
 
-class LogLevel(Enum):
+class LogLevel(str, Enum):
     """Log Level."""
 
     ERROR = "error"
@@ -37,6 +46,8 @@ LOGLEVEL_TO_LOGURU = {
     LogLevel.ERROR: 40,
 }
 
+store = LocalStore()
+
 
 @app.callback()
 def main(
@@ -45,7 +56,7 @@ def main(
         typer.Option(
             help="Level of logging to output",
         ),
-    ] = None,
+    ] = LogLevel.INFO,
 ):
     """
     Process global options.
@@ -68,7 +79,7 @@ def init(
         ),
     ] = None,
     service: Annotated[
-        Optional[qw.service.Service],
+        Optional[Service],
         typer.Option(
             help="Which service is hosting the issue tracker. Not"
             " required if the repo URL begins 'github' or 'gitlab'.",
@@ -82,69 +93,83 @@ def init(
     ] = False,
 ) -> None:
     """Initialize this tool and the repository (as far as possible)."""
-    git_dir = qw.service.find_aunt_dir(
-        ".git",
-        "We are not in a git project, so we cannot initialize!",
-    )
-    base = git_dir.parent
-    gitrepo = git.Repo(base)
-    repo = qw.service.get_repo_url(gitrepo, repo)
-    qw_dir = base / ".qw"
-    logger.debug(
-        ".qw directory is '{dir}'",
-        dir=qw_dir,
-    )
-    if qw_dir.is_file():
-        msg = (
-            ".qw file exists, which is blocking us from making"
-            " a .qw directory. Please delete it!"
-        )
-        raise QwError(
-            msg,
-        )
-    if not qw_dir.is_dir():
-        qw_dir.mkdir()
-    elif not force:
-        msg = (
-            ".qw directory already exists! Use existing"
-            " configuration or use --force flag to reinitialize!"
-        )
-        raise QwError(
-            msg,
-        )
-    (host, username, reponame) = qw.service.remote_address_to_host_user_repo(repo)
+    gitrepo = git.Repo(store.base_dir)
+    repo = get_repo_url(gitrepo, repo)
+    store.get_or_create_qw_dir(force=force)
+    (host, username, reponame) = remote_address_to_host_user_repo(repo)
     if service is None:
-        service = qw.service.hostname_to_service(host)
-    logger.debug(
-        "service, owner, repo: {service}, {owner}, {repo}",
-        service=str(service),
-        owner=username,
-        repo=reponame,
-    )
-    conf = {
-        "repo_url": repo,
-        "repo_name": reponame,
-        "user_name": username,
-        "service": str(service),
-    }
-    conf_file_name = qw_dir / "conf.json"
-    with conf_file_name.open("w") as conf_file:
-        json.dump(conf, conf_file, indent=2)
+        service = hostname_to_service(host)
+    store.write_to_config(repo, reponame, service, username)
 
 
 @app.command()
-def check():
-    """Check whether all the traceability information is present."""
-    conf = qw.service.get_configuration()
-    service = qw.factory.get_service(conf)
-    sys.stdout.write(str(conf))
-    sys.stdout.write(service.get_issue(1).title())
+def check() -> GitService:
+    """Check that qw can connect to the remote repository."""
+    conf = store.read_configuration()
+    service = get_service(conf)
+
+    service.check()
+    typer.echo("Can connect to the remote repository 🎉")
+    return service
+
+
+@app.command()
+def login(
+    *,
+    force: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Replace existing access credentials.",
+        ),
+    ] = False,
+):
+    """Add access credentials for the remote repository."""
+    conf = store.read_configuration()
+    existing_access_token = get_qw_password(conf["user_name"], conf["repo_name"])
+
+    if existing_access_token and not force:
+        typer.echo(
+            "Access token already exists, rerun with '--force' if you want to override it.",
+        )
+    else:
+        access_token = Prompt.ask(
+            f"Please copy the access token for {conf['service']}",
+        )
+
+        set_qw_password(conf["user_name"], conf["repo_name"], access_token)
+
+    check()
+
+
+@app.command()
+def freeze():
+    """Freeze the state of remote design stages and update local store."""
+    conf = store.read_configuration()
+    service = get_service(conf)
+    change_handler = ChangeHandler(service, store)
+    to_save = change_handler.combine_local_and_remote_items()
+    store.write_local_data([x.to_dict() for x in to_save])
+    logger.info("Finished freeze")
+
+
+@app.command()
+def configure(
+    force: Annotated[
+        Optional[bool],
+        typer.Option(
+            help="Replace existing configuration.",
+        ),
+    ] = False,
+):
+    """Configure remote repository for qw (after initialisation and login credentials added)."""
+    service = check()
+    store.write_templates(service, force=force)
 
 
 @app.command()
 def release():
     """Produce documentation by merging frozen values into templates."""
-    with qw.mergedoc.load_template("tests/resources/msword/test_template.docx") as doc:
+    with load_template("tests/resources/msword/test_template.docx") as doc:
         doc.write(
             outputFile="out.docx",
             data={

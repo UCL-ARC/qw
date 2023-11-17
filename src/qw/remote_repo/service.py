@@ -5,13 +5,16 @@ Abstract Service (such as github or gitlab) in which
 the project managment interest resides.
 """
 
-import json
-import pathlib
+import re
+from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from enum import Enum
+from pathlib import Path
 
 import git
 
 from qw.base import QwError
+from qw.design_stages.categories import RemoteItemType
 
 
 class Service(str, Enum):
@@ -20,49 +23,6 @@ class Service(str, Enum):
     TEST = "test"
     GITHUB = "github"
     GITLAB = "gitlab"
-
-
-def find_aunt_dir(name: str, error_msg: str) -> pathlib.Path:
-    """
-    Find a directory within this or some ancestor directory.
-
-    Returns the directory with the required name in the closest
-    ancestor of the current working directory, or None if there is no
-    such directory (the daughter of an ancestor is a great^n aunt).
-    """
-    d = pathlib.Path.cwd()
-    while True:
-        p = d / name
-        if p.is_dir():
-            return p
-        if d.name == "":
-            raise QwError(
-                error_msg,
-            )
-        d = d.parent
-
-
-def find_conf_dir() -> pathlib.Path:
-    """Return the .qw directory of the project we are in."""
-    return find_aunt_dir(
-        ".qw",
-        "Could not find a configuration directory, please initialize with `qw init`",
-    )
-
-
-def get_configuration() -> dict:
-    """Get the configuration (as a dict) from the .qw/conf.json file."""
-    conf_file_name = find_conf_dir() / "conf.json"
-    if not conf_file_name.is_file():
-        msg = (
-            "Could not find a configuration directory, please"
-            " initialize with `qw init`"
-        )
-        raise QwError(
-            msg,
-        )
-    with conf_file_name.open() as conf:
-        return json.load(conf)
 
 
 def get_repo_url(repo: git.Repo, name: str) -> str:
@@ -109,7 +69,7 @@ def remote_address_to_host_user_repo(
     """
     Get (host, user, reponame) triple from the remote address.
 
-    Takes the remote URL (such as git@github.com:me/my_repo)
+    Takes the remote URL (such as git@github.com:me/my_repo.git)
     and returns the interesting components of it
     (such as ("github.com", "me", "my_repo")).
     """
@@ -118,7 +78,7 @@ def remote_address_to_host_user_repo(
         host_user_repo = splitstr(bits[1], "/", 3)
         if host_user_repo is None:
             return None
-        (host, user, repo) = host_user_repo
+        (host, user, repo_raw) = host_user_repo
     else:
         host_userrepo = splitstr(address, ":", 2)
         if host_userrepo is None:
@@ -127,10 +87,11 @@ def remote_address_to_host_user_repo(
         user_repo = splitstr(userrepo, "/", 2)
         if user_repo is None:
             return None
-        (user, repo) = user_repo
+        (user, repo_raw) = user_repo
     uh = splitstr(host, "@", 2)
     if uh is not None:
         host = uh[1]
+    repo = re.sub(r"\.git$", "", repo_raw)
     return (host, user, repo)
 
 
@@ -153,13 +114,15 @@ def hostname_to_service(hostname: str) -> str:
     )
 
 
-class Issue:
+class Issue(ABC):
     """
     Project management Issue.
 
     For example a bug report, user need, or requirement.
     """
 
+    @property
+    @abstractmethod
     def number(self) -> int:
         """
         Get issue number.
@@ -167,18 +130,38 @@ class Issue:
         The identifying number that the users associate with this
         issue.
         """
-        raise NotImplementedError
+        ...
 
+    @property
+    @abstractmethod
     def title(self) -> str:
         """
         Get title.
 
         The title of the issue, such as is visible in issue lists.
         """
-        raise NotImplementedError
+        ...
+
+    @property
+    @abstractmethod
+    def labels(self) -> list[str]:
+        """Get the label names for the issue."""
+        ...
+
+    @property
+    @abstractmethod
+    def body(self) -> str:
+        r"""Get the body of the first comment, always using `\n` as the newline character."""
+        ...
+
+    @property
+    @abstractmethod
+    def item_type(self) -> RemoteItemType:
+        """Get the type of the issue, as we may handle a pull request differently to an issue."""
+        ...
 
 
-class GitService:
+class GitService(ABC):
     """A service hosting a git repository and project management tools."""
 
     def __init__(self, conf) -> None:
@@ -186,7 +169,25 @@ class GitService:
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
+        self.qw_resources = Path(__file__).parents[2] / "resources"
 
-    def get_issue(self, number: int):
+    @abstractmethod
+    def get_issue(self, number: int) -> Issue:
         """Get the numbered issue."""
-        raise NotImplementedError
+        ...
+
+    @property
+    @abstractmethod
+    def issues(self) -> list[Issue]:
+        """Get all issues for the repository."""
+        ...
+
+    @property
+    @abstractmethod
+    def template_paths(self) -> Iterable[Path]:
+        """Paths for templates to copy to the service."""
+        ...
+
+    def relative_target_path(self, base_folder: str, resource_path: Path) -> Path:
+        """Find the relative path that a resource should be copied to."""
+        return resource_path.relative_to(self.qw_resources / base_folder)
