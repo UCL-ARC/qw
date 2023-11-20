@@ -89,7 +89,7 @@ class MergeData:
         # Iterations we are currently engaged in at this level.
         self.iterations = {}
 
-    def get_data(self, field_name: str) -> str:
+    def get_data(self, field_name: str) -> (str, bool):
         """
         Get the named data.
 
