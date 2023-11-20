@@ -1,14 +1,14 @@
-""" Merges data into output documents """
-from collections.abc import Iterable
+"""Merges data into output documents."""
 import copy
-import docx
-from loguru import logger
-from typing import Self, List, Dict, Any
+from typing import Any, Self
 
-from md import markdown_to_plain_text
+import docx
 from docsection import DocSection, DocSectionParagraphReplacer
+from loguru import logger
+from md import markdown_to_plain_text
 
 NONE_PARAGRAPH = "*None.*"
+
 
 class MergeData:
     """
@@ -70,9 +70,11 @@ class MergeData:
     harder to implement.
     """
 
-    def __init__(self, data : Dict[str, Dict[str, Any] | List[Dict[str, Any]]]):
+    def __init__(self, data: dict[str, dict[str, Any] | list[dict[str, Any]]]):
         """
-        Initializes with data in the form:
+        Initialize with data.
+
+        Data must be in the form:
 
         [{"ObjectNames": [{"key"; "value"}]},
         "ObjectName": {"key", "value"}}]
@@ -85,9 +87,9 @@ class MergeData:
         # objects.
         self.deeper = copy.copy(data)
         # Iterations we are currently engaged in at this level.
-        self.iterations = dict()
+        self.iterations = {}
 
-    def get_data(self, field_name : str) -> str:
+    def get_data(self, field_name: str) -> str:
         """
         Get the named data.
 
@@ -105,9 +107,10 @@ class MergeData:
         of times as we go along.
         """
         parts = field_name.split(".")
-        if len(parts) != 2:
+        try:
+            [k, prop] = parts
+        except ValueError:
             return (None, True)
-        [k, prop] = parts
         logger.debug("Getting {0} . {1}", k, prop)
         if k not in self.data:
             logger.debug("did not find object {0}", k)
@@ -116,8 +119,14 @@ class MergeData:
         if obj is None:
             logger.debug("object {0} is None", k)
             return (None, True)
-        if type(obj) is dict:
-            logger.debug("{0} . {1} is {2} in {3}", k, prop, obj.get(prop, "not present"), obj)
+        if isinstance(obj, dict):
+            logger.debug(
+                "{0} . {1} is {2} in {3}",
+                k,
+                prop,
+                obj.get(prop, "not present"),
+                obj,
+            )
             return (obj.get(prop, None), True)
         if k not in self.iterations:
             logger.debug("beginning iteration for {0}", k)
@@ -143,26 +152,21 @@ class MergeData:
         if objs is None or len(objs) <= i:
             return
         obj = objs[i]
-        if type(obj) is not dict:
+        if not isinstance(obj, dict):
             return
-        id = obj.get('id', None)
-        if id is None:
+        obj_id = obj.get("id", None)
+        if obj_id is None:
             return
         # Find out which other values in self.data
         # are refer to obj
         for d_key, d_objs in self.data.items():
             # do the d_objs refer back to `key`?
-            if (
-                type(d_objs) is list
-                and len(d_objs) != 0
-                and key in d_objs[0]
-            ):
+            if isinstance(d_objs, list) and len(d_objs) != 0 and key in d_objs[0]:
                 # Yes, so filter them to those that refer to
                 # key in the deeper data.
-                self.deeper[d_key] = list(filter(
-                    lambda d_obj: d_obj.get(key, None) == id,
-                    d_objs
-                ))
+                self.deeper[d_key] = list(
+                    filter(lambda d_obj: d_obj.get(key, None) == obj_id, d_objs),
+                )
 
     def deeper_data(self) -> Self:
         """
@@ -174,7 +178,7 @@ class MergeData:
         current positions.
         """
         logger.debug("iteration state: {0}", self.iterations)
-        for k,i in self.iterations.items():
+        for k, i in self.iterations.items():
             objs = self.data[k]
             self.deeper[k] = objs[i] if i < len(objs) else None
         return MergeData(self.deeper)
@@ -193,13 +197,22 @@ class MergeData:
 
 
 class Document:
-    def __init__(self, templateFile : str) -> None:
-        self.docx = docx.Document(templateFile)
+    """MS Word document with MergeFields to be replaced."""
+
+    def __init__(self, template_file: str) -> None:
+        """Initialize the document from a template file."""
+        self.docx = docx.Document(template_file)
         self.top = DocSection(self.docx)
 
-    def interpolate_sections(self, section : DocSection, data: MergeData):
+    def _interpolate_sections(self, section: DocSection, data: MergeData):
+        """
+        Interpolate Mergefields.
+
+        section -- interpolate the mergefields iterated through by this
+        data -- the data to merge into these mergefields.
+        """
         logger.debug("Starting section")
-        while section.next():
+        while section.next_section():
             fs = section.fields()
             if len(fs) == 1 and section.paragraph_is_only_field():
                 # Replace the entire first paragraph
@@ -212,15 +225,15 @@ class Document:
             # replaced) first paragraph
             deeper = section.deeper()
             if deeper:
-                self.interpolate_sections(deeper, data.deeper_data())
+                self._interpolate_sections(deeper, data.deeper_data())
             data.next_section()
         logger.debug("Finished section")
 
     def _replace_section_head(
         self,
-        section : DocSection,
-        data : MergeData,
-        field_name : str
+        section: DocSection,
+        data: MergeData,
+        field_name: str,
     ):
         """
         Replace a paragraph with the field data.
@@ -244,14 +257,14 @@ class Document:
         replacer.render_markdown(replacement)
 
     def _replace_fields_in_section_head(
-            self,
-            section : DocSection,
-            data : MergeData,
-            fs : set[str]
+        self,
+        section: DocSection,
+        data: MergeData,
+        fs: set[str],
     ):
         """
         Replace the fields in the section's first paragraph.
-        
+
         section -- the section whose head we are replacing.
         data -- the data to pull from.
         fs -- set of field names to replace.
@@ -275,27 +288,17 @@ class Document:
             replacement = markdown_to_plain_text(replacement_md)
             section.replace_field(field_name, replacement)
 
-    def write(self, outputFile : str, data : dict[str, list[str]]) -> None:
+    def write(self, output_file: str, data: dict[str, list[str]]) -> None:
         """
         Write out a document based on the template.
 
         outputFile -- the filename to write to.
         data -- the data to place into the fields.
         """
-        self.interpolate_sections(self.top, MergeData(data))
-        self.docx.save(outputFile)
+        self._interpolate_sections(self.top, MergeData(data))
+        self.docx.save(output_file)
 
-    def close(self):
-        pass
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
-
-def load_template(templateFile : str) -> Document:
-    """
-    Load a template MS Word document.
-    """
-    return Document(templateFile)
+def load_template(template_file: str) -> Document:
+    """Load a template MS Word document."""
+    return Document(template_file)

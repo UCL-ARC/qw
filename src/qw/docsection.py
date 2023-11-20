@@ -1,25 +1,29 @@
 """
+DocX outline level iterator.
+
 Layer over python-docx allowing looping through
 outline sections, duplicating them as necessary
 to put the required data in.
 """
 import copy
-import docx
-from docx.opc.constants import RELATIONSHIP_TYPE as RT
-from loguru import logger
-from lxml.etree import QName
 import re
 from typing import Self
 
-from base import QwError
+import docx
 import md
+from base import QwError
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
+from loguru import logger
+from lxml.etree import QName
 
 
-def qname(ns : str, val : str) -> str:
+def qname(ns: str, val: str) -> str:
+    """Qualified name for "ns:val"."""
     return QName(docx.oxml.ns.nsmap[ns], val)
 
 
-def nsw(val : str) -> str:
+def nsw(val: str) -> str:
+    """Qualified name for "w:val"."""
     return qname("w", val)
 
 
@@ -51,13 +55,23 @@ TAG_HYPERLINK = nsw("hyperlink")
 
 
 def is_fld_begin(run):
-    return 0 < len(run.xpath('w:fldChar[@w:fldCharType="begin"]'))
+    """Is this <w:r> run element the beginning of a field?."""
+    return len(run.xpath('w:fldChar[@w:fldCharType="begin"]')) > 0
+
 
 def is_fld_separate(run):
-    return 0 < len(run.xpath('w:fldChar[@w:fldCharType="separate"]'))
+    """
+    Is this <w:r> run element a field separator?.
+
+    There is a separator between a field's metadata and its text.
+    """
+    return len(run.xpath('w:fldChar[@w:fldCharType="separate"]')) > 0
+
 
 def is_fld_end(run):
-    return 0 < len(run.xpath('w:fldChar[@w:fldCharType="end"]'))
+    """Is this <w:r> run element the end of a field?."""
+    return len(run.xpath('w:fldChar[@w:fldCharType="end"]')) > 0
+
 
 HEADING_STYLE_ID = [
     "Heading1",
@@ -67,6 +81,7 @@ HEADING_STYLE_ID = [
 ]
 
 PREFORMATTED_FONT_NAME = "Courier"
+
 
 class DocSection:
     """
@@ -91,13 +106,7 @@ class DocSection:
     of the document, `next` returns None.
     """
 
-    def __init__(
-        self,
-        docx,
-        from_index=None,
-        outer_level=None,
-        parent=None
-    ):
+    def __init__(self, docx, from_index=None, outer_level=None, parent=None):
         """
         Create a DocSection as an empty object.
 
@@ -111,7 +120,8 @@ class DocSection:
         self.docx = docx
         bodies = docx.element.xpath("w:body")
         if len(bodies) != 1:
-            raise QwError("not a single body")
+            msg = "not a single body"
+            raise QwError(msg)
         # The "w:body" element of the document
         self.element = bodies[0]
         # The index of the first paragraph pointed to (within the
@@ -127,7 +137,7 @@ class DocSection:
         self.outer_level = outer_level
         # The DocSection that created this DocSection with its
         # `deeper` method.
-        self.parent=parent
+        self.parent = parent
 
     def _get_number_level(self, element):
         """
@@ -140,29 +150,31 @@ class DocSection:
         We return the indent level plus 50; list items are
         deeper than body text (at level 0).
         """
-        bullets = element.xpath('w:pPr/w:numPr/w:ilvl')
+        bullets = element.xpath("w:pPr/w:numPr/w:ilvl")
         if len(bullets) != 0:
             val = bullets[0].attrib[ATTRIB_VAL]
             if val.isnumeric():
                 return int(val) + 50
-            else:
-                return 50
+            return 50
         return None
 
     def _get_paragraph_level(self, paragraph):
         """
         Get the outline level of the paragraph in `element`.
-        
+
         `element` is the <w:p> element in the document. The outline
         level of body text is 0. Headings are shallower, at -50 (for
         Heading 1) counting up -49, -48 etcetera.
         """
         # Find the style outline level element
-        styles = paragraph.xpath('w:pPr/w:pStyle')
+        styles = paragraph.xpath("w:pPr/w:pStyle")
         if len(styles) != 0:
             style_id = styles[0].attrib[ATTRIB_VAL]
-            style = self.docx.styles.get_by_id(style_id, docx.enum.style.WD_STYLE_TYPE.PARAGRAPH)
-            outlines = style.element.xpath('w:pPr/w:outlineLvl')
+            style = self.docx.styles.get_by_id(
+                style_id,
+                docx.enum.style.WD_STYLE_TYPE.PARAGRAPH,
+            )
+            outlines = style.element.xpath("w:pPr/w:outlineLvl")
             if len(outlines) != 0:
                 val = outlines[0].attrib[ATTRIB_VAL]
                 if val.isnumeric():
@@ -179,7 +191,7 @@ class DocSection:
             return r
         return 0
 
-    def next(self):
+    def next_section(self):
         """
         Move to the next section in the document.
 
@@ -208,23 +220,35 @@ class DocSection:
             level = self._get_paragraph_level(p)
             # Have we reached the end of the section?
             if level <= self.start_level:
-                logger.debug("Section {0} - {1} (hit level {2} <= {3})", self.start_index, self.end_index, level, self.start_level)
+                logger.debug(
+                    "Section {0} - {1} (hit level {2} <= {3})",
+                    self.start_index,
+                    self.end_index,
+                    level,
+                    self.start_level,
+                )
                 return True
             self.end_index += 1
             p = p.getnext()
-        logger.debug("Section {0} - {1} (end of document)", self.start_index, self.end_index)
+        logger.debug(
+            "Section {0} - {1} (end of document)",
+            self.start_index,
+            self.end_index,
+        )
         return True
 
     def at_document_end(self):
-        """ Have we reached the document end? """
+        """Have we reached the document end?."""
         return len(self.element) <= self.end_index
 
     def deeper(self) -> Self | None:
         """
-        Return a new DocSection that iterates through the current
+        Get a deeper iterator.
+
+        Returns a new DocSection that iterates through the current
         section at a deeper level, if possible.
         """
-        if self.end_index - self.start_index < 2:
+        if self.end_index - self.start_index <= 1:
             # We only have one paragraph, so there is no deeper
             # iteration to be done.
             return None
@@ -232,7 +256,7 @@ class DocSection:
             self.docx,
             from_index=self.start_index + 1,
             outer_level=self.start_level,
-            parent=self
+            parent=self,
         )
 
     def duplicate(self):
@@ -254,6 +278,8 @@ class DocSection:
 
     def _paragraph_count_changed(self, length):
         """
+        Update the paragraph count.
+
         This is called when a DocSection created by `deeper` either
         changes the number of paragraphs it has or hears of changes
         that happened even deeper.
@@ -264,13 +290,15 @@ class DocSection:
 
     def fields(self) -> set[str]:
         """
-        Return a set of all the fields present in the first
+        Find the fields in the first paragraph.
+
+        Returns a set of all the fields present in the first
         paragraph of this section.
         """
         r = set()
         if self.end_index == self.start_index:
             return r
-        for instr in self.element[self.start_index].xpath('*/w:instrText'):
+        for instr in self.element[self.start_index].xpath("*/w:instrText"):
             merge = MERGEFIELD_RE.fullmatch(instr.text)
             if merge is not None:
                 r.add(merge.group(1))
@@ -278,7 +306,9 @@ class DocSection:
 
     def paragraph_is_only_field(self) -> bool:
         """
-        Return True if there is exactly one field in the first
+        Is this paragraph only a field?.
+
+        Returns True if there is exactly one field in the first
         paragraph of this section (with no other text) and it is
         normal body text.
 
@@ -286,16 +316,14 @@ class DocSection:
         rich text. If not, each field is replaced with plain text.
         """
         if self.end_index == self.start_index:
-            logger.debug("**** NO!")
             return False
         paragraph = self.element[self.start_index]
         if self._get_paragraph_level(paragraph) != 0:
             # Not normal body text, so shouldn't be replaced with
             # rich text.
-            logger.debug("**** Not body text")
             return False
         is_in_field = False
-        for run in paragraph.xpath('w:r'):
+        for run in paragraph.xpath("w:r"):
             if is_fld_begin(run):
                 # We are in a field (which spans multiple <w:r>s)
                 is_in_field = True
@@ -308,11 +336,9 @@ class DocSection:
         # There is no run that is not part of a field.
         return True
 
-    def remove_nonfirst_paragraphs(
-        self
-    ):
+    def remove_nonfirst_paragraphs(self):
         """
-        Remove all but the first paragraph of this section
+        Remove all but the first paragraph of this section.
 
         This is used when we want to replace the whole section with
         a single "None" text.
@@ -321,18 +347,20 @@ class DocSection:
         length = self.end_index - start
         if length < 0:
             return
-        for i in range(length):
+        for _i in range(length):
             self.element.remove(self.element[start])
         if self.parent:
             self.parent._paragraph_count_changed(-length)
 
     def replace_first_paragraph(
         self,
-        typ : md.DocumentBuilder.ParagraphType,
-        level : int=0
+        typ: md.DocumentBuilder.ParagraphType,
+        level: int = 0,
     ):
         """
-        Replace the first paragraph in the section with an empty
+        Replace the first paragraph with an empty paragraph.
+
+        Replaces the first paragraph in the section with an empty
         paragraph of the required type.
 
         `level` is the level of the heading (0 = Heading 1)
@@ -354,71 +382,78 @@ class DocSection:
             something else.
         """
         numbering = self.docx.part.numbering_part.element
-        numFmts = numbering.xpath(
-            'w:abstractNum/w:lvl/w:numFmt[@w:val="{0}"]'.format(fmt)
+        num_fmts = numbering.xpath(
+            f'w:abstractNum/w:lvl/w:numFmt[@w:val="{fmt}"]',
         )
-        if len(numFmts) == 0:
+        if len(num_fmts) == 0:
             return None
-        abstractNumId = numFmts[0].getparent().getparent().attrib[ATTRIB_ABSTRACTNUMID]
+        abstract_num_id = (
+            num_fmts[0].getparent().getparent().attrib[ATTRIB_ABSTRACTNUMID]
+        )
         nums = numbering.xpath(
-            'w:num/w:abstractNumId[@w:val="{0}"]'.format(abstractNumId)
+            f'w:num/w:abstractNumId[@w:val="{abstract_num_id}"]',
         )
         if len(nums) == 0:
             return None
-        numId = nums[0].getparent().attrib[ATTRIB_NUMID]
-        return numId
+        return nums[0].getparent().attrib[ATTRIB_NUMID]
 
     def _add_paragraph_style(self, typ, level, paragraph):
         """
-        Apply the DocumentBuilder paragraph format specifiers to
+        Apply a style to the paragraph.
+
+        Applies the DocumentBuilder paragraph format specifiers to
         a paragraph.
         """
-        pPr = paragraph.makeelement(TAG_PPR)
-        paragraph.append(pPr)
-        numId = None
-        styleName = None
+        ppr = paragraph.makeelement(TAG_PPR)
+        paragraph.append(ppr)
+        num_id = None
+        style_name = None
         if typ is None:
             # Body text
-            styleName = "Normal"
+            style_name = "Normal"
         elif typ == md.DocumentBuilder.ParagraphType.HEADING:
             # Heading
-            if 0 <= level and level < len(HEADING_STYLE_ID):
-                styleName = HEADING_STYLE_ID[level]
+            if level >= 0 and level < len(HEADING_STYLE_ID):
+                style_name = HEADING_STYLE_ID[level]
         elif typ == md.DocumentBuilder.ParagraphType.LIST_ORDERED:
             # Numbered list item
-            styleName = "Normal"
-            numId = self._get_num_id("decimal")
+            style_name = "Normal"
+            num_id = self._get_num_id("decimal")
         elif typ == md.DocumentBuilder.ParagraphType.LIST_UNORDERED:
             # Bullet list item
-            styleName = "Normal"
-            numId = self._get_num_id("bullet")
-        if styleName is not None:
-            pPr.append(
-                paragraph.makeelement(TAG_PSTYLE, { ATTRIB_VAL: styleName }),
+            style_name = "Normal"
+            num_id = self._get_num_id("bullet")
+        if style_name is not None:
+            ppr.append(
+                paragraph.makeelement(TAG_PSTYLE, {ATTRIB_VAL: style_name}),
             )
-        if numId is not None:
-            numPr = paragraph.makeelement(TAG_NUMPR)
-            numPr.extend([
-                paragraph.makeelement(TAG_ILVL, { ATTRIB_VAL: str(level) }),
-                paragraph.makeelement(TAG_NUMID, { ATTRIB_VAL: numId })
-            ])
-            pPr.append(numPr)
+        if num_id is not None:
+            num_pr = paragraph.makeelement(TAG_NUMPR)
+            num_pr.extend(
+                [
+                    paragraph.makeelement(TAG_ILVL, {ATTRIB_VAL: str(level)}),
+                    paragraph.makeelement(TAG_NUMID, {ATTRIB_VAL: num_id}),
+                ],
+            )
+            ppr.append(num_pr)
         # Basic stuff that's in all paragraph formats
-        pPr.extend([
-            # Bidirectional information
-            paragraph.makeelement(TAG_BIDI, { ATTRIB_VAL: "0" }),
-            # Justification
-            paragraph.makeelement(TAG_JC, { ATTRIB_VAL: "left" }),
-            # Standard run format
-            paragraph.makeelement(TAG_RPR),
-        ])
+        ppr.extend(
+            [
+                # Bidirectional information
+                paragraph.makeelement(TAG_BIDI, {ATTRIB_VAL: "0"}),
+                # Justification
+                paragraph.makeelement(TAG_JC, {ATTRIB_VAL: "left"}),
+                # Standard run format
+                paragraph.makeelement(TAG_RPR),
+            ],
+        )
 
     def add_run(
         self,
-        text : str,
-        bold : bool=None,
-        italic : bool=None,
-        pre : bool=None
+        text: str,
+        bold: md.DocumentBuilder.Boldness | None = None,
+        italic: md.DocumentBuilder.Italicness | None = None,
+        pre: md.DocumentBuilder.Spacing | None = None,
     ):
         """
         Add a run to the end of the head of the current section.
@@ -430,22 +465,29 @@ class DocSection:
         p = self.element[self.last_head_paragraph_index]
         r = p.makeelement(TAG_R)
         p.append(r)
-        rPr = p.makeelement(TAG_RPR)
+        rpr = p.makeelement(TAG_RPR)
         if bold:
-            rPr.extend(rPr.makeelement(TAG_B))
+            rpr.extend(rpr.makeelement(TAG_B))
         if italic:
-            rPr.append(rPr.makeelement(TAG_I))
+            rpr.append(rpr.makeelement(TAG_I))
         if pre:
-            rPr.append(rPr.makeelement(TAG_RFONTS, {
-                ATTRIB_ASCII: PREFORMATTED_FONT_NAME,
-                ATTRIB_HANSI: PREFORMATTED_FONT_NAME
-            }))
-        r.append(rPr)
+            rpr.append(
+                rpr.makeelement(
+                    TAG_RFONTS,
+                    {
+                        ATTRIB_ASCII: PREFORMATTED_FONT_NAME,
+                        ATTRIB_HANSI: PREFORMATTED_FONT_NAME,
+                    },
+                ),
+            )
+        r.append(rpr)
         self._add_plain_text(r, text)
 
     def _add_plain_text(self, r, text):
         """
-        Add plain text to a <w:r> element as a series of text and
+        Add a plain text run.
+
+        Adds plain text to a <w:r> element as a series of text and
         linebreak elements.
         """
         br = False
@@ -454,57 +496,48 @@ class DocSection:
                 r.append(r.makeelement(TAG_BR))
             else:
                 br = True
-            t = r.makeelement(TAG_T, { ATTRIB_SPACE: "preserve" })
+            t = r.makeelement(TAG_T, {ATTRIB_SPACE: "preserve"})
             t.text = text_line
             r.append(t)
 
-    def _get_link_id(self, link : str):
+    def _get_link_id(self, link: str):
         """
         Get a link ID for the target of a hyperlink.
-        
+
         MS Word documents store link targets separately from the
         text. We must search the links part for the target to see
         if it already exists. If it does, we return its ID, if not
         we create a new one and return its ID.
         """
         # find an existing link
-        rid = self.docx.part.relate_to(link, RT.HYPERLINK, is_external=True)
-        return rid
+        return self.docx.part.relate_to(link, RT.HYPERLINK, is_external=True)
 
-    def add_hyperlink(
-        self,
-        text : str,
-        link : str
-    ):
+    def add_hyperlink(self, text: str, link: str):
         """
-        Add a hyperlink to the end of the head of the current
-        section.
+        Add a hyperlink.
 
-        DocBuilder override.
+        DocBuilder override adds a hyperlink to the end of the
+        current section.
         """
         p = self.element[self.last_head_paragraph_index]
         rid = self._get_link_id(link)
-        hyperlink = p.makeelement(TAG_HYPERLINK, { TAG_R_ID: rid })
+        hyperlink = p.makeelement(TAG_HYPERLINK, {TAG_R_ID: rid})
         run = p.makeelement(TAG_R)
-        rPr = p.makeelement(TAG_RPR)
-        rStyle = p.makeelement(TAG_RSTYLE, {
-            ATTRIB_VAL: "InternetLink"
-        })
-        rPr.append(rStyle)
+        rpr = p.makeelement(TAG_RPR)
+        r_style = p.makeelement(TAG_RSTYLE, {ATTRIB_VAL: "InternetLink"})
+        rpr.append(r_style)
         # Make the actual visible text part
         t = p.makeelement(TAG_T)
         t.text = text
-        run.extend([rPr, t])
+        run.extend([rpr, t])
         hyperlink.append(run)
         p.append(hyperlink)
 
-    def add_paragraph(
-        self,
-        typ : md.DocumentBuilder.ParagraphType,
-        level : int=0
-    ):
+    def add_paragraph(self, typ: md.DocumentBuilder.ParagraphType, level: int = 0):
         """
-        Add a new empty paragraph to the end of the head of the
+        Add an empty paragraph of the required style.
+
+        Adds a new empty paragraph to the end of the head of the
         current section.
 
         DocBuilder override.
@@ -512,14 +545,13 @@ class DocSection:
         p = self.element.makeelement(TAG_P)
         self._add_paragraph_style(typ, level, p)
         self.last_head_paragraph_index += 1
-        self.element.insert(
-            self.last_head_paragraph_index,
-            p
-        )
+        self.element.insert(self.last_head_paragraph_index, p)
 
     def _delete_backwards_until(self, node, predicate):
         """
-        Delete XML sibling nodes backwards until finding one that
+        Delete nodes backwards.
+
+        Deletes XML sibling nodes backwards until finding one that
         matches the predicate.
 
         Returns the node before the deleted nodes, if there is one.
@@ -527,12 +559,17 @@ class DocSection:
         Both the starting node and the matching node are deleted.
         A node matches the predicate if predicate(node) returns True.
         """
-        go_next = lambda n: n.getprevious()
+
+        def go_next(n):
+            return n.getprevious()
+
         return self._delete_direction_until(node, predicate, go_next)
 
     def _delete_forwards_until(self, node, predicate):
         """
-        Delete XML sibling nodes forwards until finding one that
+        Delete node forwards.
+
+        Deletes XML sibling nodes forwards until finding one that
         matches the predicate.
 
         Returns the node after the deleted nodes, if there is one.
@@ -540,11 +577,16 @@ class DocSection:
         Both the starting node and the matching node are deleted.
         A node matches the predicate if predicate(node) returns True.
         """
-        go_next = lambda n: n.getnext()
+
+        def go_next(n):
+            return n.getnext()
+
         return self._delete_direction_until(node, predicate, go_next)
 
     def _delete_direction_until(self, node, predicate, go_next):
         """
+        Delete nodes backwards or forwards.
+
         Delete XML nodes until finding one that matches the
         predicate.
 
@@ -557,14 +599,15 @@ class DocSection:
         A node matches the predicate if predicate(node) returns True.
         """
         while node is not None:
-            next = go_next(node)
+            next_node = go_next(node)
             at_end = predicate(node)
             node.getparent().remove(node)
             if at_end:
-                return next
-            node = next
+                return next_node
+            node = next_node
+        return None
 
-    def _replace_field_runs(self, instr_node, plain_text : str):
+    def _replace_field_runs(self, instr_node, plain_text: str):
         """
         Replace the fields containing instr_node with plain_text.
 
@@ -585,14 +628,14 @@ class DocSection:
             # And delete the rest of the field furniture
             self._delete_forwards_until(r.getnext(), is_fld_end)
 
-    def replace_field(self, name : str, plain_text : str) -> int:
+    def replace_field(self, name: str, plain_text: str) -> int:
         """
         Replace all MailMerge fields named `name` with pain text.
 
         Returns the number of fields thus replaced.
         """
         count = 0
-        for instr in self.element[self.start_index].xpath('*/w:instrText'):
+        for instr in self.element[self.start_index].xpath("*/w:instrText"):
             merge = MERGEFIELD_RE.fullmatch(instr.text)
             if merge is not None and merge.group(1) == name:
                 self._replace_field_runs(instr, plain_text)
@@ -602,30 +645,43 @@ class DocSection:
 
 class DocSectionParagraphReplacer(md.DocumentBuilder):
     """
-    DocumentBuilder that replaces a single paragraph in an MS Word
-    document.
+    DocumentBuilder that replaces a single paragraph.
 
     The paragraph in question is the first paragraph pointed to
     by a DocSection object.
     """
 
-    def __init__(self, section : DocSection):
+    def __init__(self, section: DocSection):
+        """Initialize with a DocSection."""
         self.section = section
         self.first = True
 
     def new_paragraph(
         self,
-        paragraph_type : md.DocumentBuilder.ParagraphType=None,
-        paragraph_level : int=0
+        paragraph_type: md.DocumentBuilder.ParagraphType = None,
+        paragraph_level: int = 0,
     ):
+        """DocumentBuilder override."""
         if self.first:
             self.section.replace_first_paragraph(paragraph_type, paragraph_level)
             self.first = False
         else:
             self.section.add_paragraph(paragraph_type, paragraph_level)
 
-    def add_run(self, text : str, bold : bool=None, italic : bool=None, pre : bool=None):
+    def add_run(
+        self,
+        text: str,
+        bold: md.DocumentBuilder.Boldness | None = None,
+        italic: md.DocumentBuilder.Italicness | None = None,
+        pre: md.DocumentBuilder.Spacing | None = None,
+    ):
+        """DocumentBuilder override."""
         self.section.add_run(text, bold, italic, pre)
 
-    def add_hyperlink(self, text : str, link : str, bold : bool=None, italic : bool=None, pre : bool=None):
+    def add_hyperlink(
+        self,
+        text: str,
+        link: str,
+    ):
+        """DocumentBuilder override."""
         self.section.add_hyperlink(text, link)

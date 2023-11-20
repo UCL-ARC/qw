@@ -219,59 +219,87 @@ def configure(
 @app.command()
 def release():
     """Produce documentation by merging frozen values into templates."""
-    with load_template("tests/resources/msword/test_template.docx") as doc:
-        doc.write(
-            outputFile="out.docx",
-            data={
-                "soup": [{
+    doc = load_template("tests/resources/msword/test_template.docx")
+    doc.write(
+        output_file="out.docx",
+        data={
+            "soup": [
+                {
                     "id": "34",
                     "name": "Python",
-                    "description": "The **Python** programming language"
-                }, {
+                    "description": "The **Python** programming language",
+                },
+                {
                     "id": "75",
                     "name": "python-docx",
-                    "description": "The *Python* module `python-docx`.\n* provides access to MS Word Documents\n* Isn't very good"
-                }],
-                "software-requirement": [{
+                    "description": (
+                        "The *Python* module `python-docx`.\n"
+                        "* provides access to MS Word Documents\n"
+                        "* Isn't very good"
+                    ),
+                },
+            ],
+            "software-requirement": [
+                {
                     "id": "101",
                     "name": "Dose input",
                     "description": "Allow the user to input the *dose*.",
-                    "system-requirement": "31"
-                }, {
+                    "system-requirement": "31",
+                },
+                {
                     "id": "102",
                     "name": "Dose measurement",
-                    "description": "The *hardware* must measure the dose given.",
+                    "description": ("The *hardware* must measure the dose given."),
                     "system-requirement": "32",
-                }, {
+                },
+                {
                     "id": "103",
                     "name": "Dose articulation",
-                    "description": "The *hardware* must stop delivering the medicine when dose given meets the dose required.",
+                    "description": (
+                        "The *hardware* must stop delivering the"
+                        " medicine when dose given meets the dose"
+                        " required."
+                    ),
                     "system-requirement": "32",
-                }, {
+                },
+                {
                     "id": "104",
                     "name": "Lock screen",
-                    "description": "The [screen](https://dictionary.cambridge.org/dictionary/english/screen) should show `locked` when the _lock_ button is pressed",
-                    "system-requirement": "33"
-                }],
-                "system-requirement": [{
+                    "description": (
+                        "The [screen](https://dictionary.cambridge.org"
+                        "/dictionary/english/screen) should show"
+                        " `locked` when the _lock_ button is pressed"
+                    ),
+                    "system-requirement": "33",
+                },
+            ],
+            "system-requirement": [
+                {
                     "id": "31",
                     "name": "Dose input",
-                    "description": "User must be able to input the dose"
-                }, {
+                    "description": "User must be able to input the dose",
+                },
+                {
                     "id": "32",
                     "name": "Dose correct",
-                    "description": "Dose must match the input dose"
-                }, {
+                    "description": "Dose must match the input dose",
+                },
+                {
                     "id": "33",
                     "name": "Lockable",
-                    "description": "Device should be easily lockable and only unlockable by the registered user."
-                }, {
+                    "description": (
+                        "Device should be easily lockable and only"
+                        " unlockable by the registered user."
+                    ),
+                },
+                {
                     "id": "34",
                     "name": "Something else",
-                    "description": "Are we having **fun** yet?"
-                }]
-            }
-        )
+                    "description": "Are we having **fun** yet?",
+                },
+            ],
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
-import itertools
 
 from qw.base import QwError
 
@@ -34,7 +33,9 @@ def text_under_heading(text: str, heading: str) -> str:
 
 
 # Breaking Markdown text into paragraphs of some type
-FENCED_RE = re.compile(r"(?:^|\n+)(?:~{3,}|`{3,})\s*(.*?)\n([\S\s]*?)\n(?:~{3,}|`{3,})(?:$|\n+)")
+FENCED_RE = re.compile(
+    r"(?:^|\n+)(?:~{3,}|`{3,})\s*(.*?)\n([\S\s]*?)\n(?:~{3,}|`{3,})(?:$|\n+)",
+)
 PARAGRAPH_RE = re.compile(r"\n{2,}|\n(?=\s*[\*\+\-]\s)")
 
 # Determinig the type of a paragraph
@@ -54,9 +55,7 @@ ASTERISK1_RE = re.compile(r"\*(\S(?:.*\S)?)\*")
 UNDERSCORE1_RE = re.compile(r"(?:^|(?<=\s))_(\S(?:.*\S)?)_(?:$|(?=\s))")
 ## `preformated`
 BACKTICK_RE = re.compile(r"`([^` \t\r\n].*?)`")
-## [[link]]
 SQUARE2_RE = re.compile(r"\[\[(.+?)\]\](?=[^\]])")
-## [text](link)
 LINK_RE = re.compile(r"\[(.+?)\]\((.+?)\)")
 
 
@@ -69,20 +68,40 @@ class DocumentBuilder(ABC):
     """
 
     class ParagraphType(Enum):
+        """Types of paragraph that Markdown knows about."""
+
         HEADING = 1
         PREFORMATTED = 2
         LIST_ORDERED = 3
         LIST_UNORDERED = 4
 
+    class Boldness(Enum):
+        """Bold or not."""
+
+        UNBOLD = 0
+        BOLD = 1
+
+    class Italicness(Enum):
+        """Italic or not."""
+
+        UPRIGHT = 0
+        ITALIC = 1
+
+    class Spacing(Enum):
+        """Monospaced or not."""
+
+        PROPORTIONAL = 0
+        MONOSPACED = 1
+
     @abstractmethod
     def new_paragraph(
         self,
-        paragraph_type : ParagraphType=None,
-        paragraph_level : int=0
+        paragraph_type: ParagraphType = None,
+        paragraph_level: int = 0,
     ):
         """
         Start a new paragraph at the end of the target document.
-        
+
         paragraph_type -- Whether the paragraph is a heading,
             preformatted paragraph, bulleted list item or numbered
             list item.
@@ -90,11 +109,15 @@ class DocumentBuilder(ABC):
             headings (0 is most important), or the indent level
             for list items (0 is no indent).
         """
-        pass
-
 
     @abstractmethod
-    def add_run(self, text : str, bold : bool=None, italic : bool=None, pre : bool=None):
+    def add_run(
+        self,
+        text: str,
+        bold: Boldness | None = None,
+        italic: Italicness | None = None,
+        pre: Spacing | None = None,
+    ):
         """
         Add a run of text to the end of the current paragraph.
 
@@ -103,22 +126,21 @@ class DocumentBuilder(ABC):
         italic -- True if the text should be italic.
         pre -- True if the text should be in a monospaced font.
         """
-        pass
-
 
     @abstractmethod
-    def add_hyperlink(self, text : str, link : str, bold : bool=None, italic : bool=None, pre : bool=None):
-        """
-        Add a hyperlink to the end of the current paragraph.
+    def add_hyperlink(
+        self,
+        text: str,
+        link: str,
+    ):
+        """Add a hyperlink to the end of the current paragraph."""
 
-        bold, italic and pre refers to whether this hyperlink were
-        part of bold, italic and preformatted runs in the source.
-        There is no need to honour these in the target document!
-        """
-        pass
-
-
-    def _render_markdown_not_pre(self, text : str, bold : bool, italic : bool):
+    def _render_markdown_not_pre(
+        self,
+        text: str,
+        bold: Boldness | None,
+        italic: Italicness | None,
+    ):
         if not text:
             return
         # Split the text into non-link/[[link]] runs
@@ -134,32 +156,47 @@ class DocumentBuilder(ABC):
                     self.add_run(linx2[j], bold=bold, italic=italic)
                     if j + 2 < len(linx2):
                         # Render the link
-                        self.add_hyperlink(linx2[j + 1], linx2[j + 2], bold=bold, italic=italic)
+                        self.add_hyperlink(
+                            linx2[j + 1],
+                            linx2[j + 2],
+                        )
             if i + 1 < len(linx):
                 # Add [[double squares]] type link
-                self.add_hyperlink(linx[i + 1], linx[i + 1], bold=bold, italic=italic)
+                self.add_hyperlink(linx[i + 1], linx[i + 1])
 
-
-    def _render_markdown_bold_italic_run(self, text : str, bold : bool, italic : bool):
-        """
-        Render a bold/italic/both/neither run, finding other formatting.
-        """
+    def _render_markdown_bold_italic_run(
+        self,
+        text: str,
+        bold: Boldness | None,
+        italic: Italicness | None,
+    ):
+        """Render a bold/italic/both/neither run, finding other formatting."""
         if not text:
             return
         # Split the text into non-preformatted/preformatted runs
         backtix = BACKTICK_RE.split(text)
         for i in range(0, len(backtix), 2):
             # Render the non-preformatted run
-            self._render_markdown_not_pre(backtix[i], bold=bold, italic=italic)
+            self._render_markdown_not_pre(
+                backtix[i],
+                bold=bold,
+                italic=italic,
+            )
             if i + 1 < len(backtix):
                 # Render the preformatted run
-                self.add_run(backtix[i + 1], bold=bold, italic=italic, pre=True)
+                self.add_run(
+                    backtix[i + 1],
+                    bold=bold,
+                    italic=italic,
+                    pre=DocumentBuilder.Spacing.MONOSPACED,
+                )
 
-
-    def _render_markdown_bold_run(self, text : str, bold : bool):
-        """
-        Render a bold or non-bold run, finding other formatting.
-        """
+    def _render_markdown_bold_run(
+        self,
+        text: str,
+        bold: Boldness | None,
+    ):
+        """Render a bold or non-bold run, finding other formatting."""
         if not text:
             return
         # Split the text into non-asterisked-italic/asterisked-italic runs
@@ -171,19 +208,28 @@ class DocumentBuilder(ABC):
                 italix2 = UNDERSCORE1_RE.split(upright_run)
                 for j in range(0, len(italix2), 2):
                     # Neither underscored nor asterisked italic
-                    self._render_markdown_bold_italic_run(italix2[j], bold=bold, italic=None)
+                    self._render_markdown_bold_italic_run(
+                        italix2[j],
+                        bold=bold,
+                        italic=None,
+                    )
                     if j + 1 < len(italix2):
                         # Render underscored-italic run
-                        self._render_markdown_bold_italic_run(italix2[j + 1], bold=bold, italic=True)
+                        self._render_markdown_bold_italic_run(
+                            italix2[j + 1],
+                            bold=bold,
+                            italic=DocumentBuilder.Italicness.ITALIC,
+                        )
             if i + 1 < len(italix):
                 # render the asterisked-italic run
-                self._render_markdown_bold_italic_run(italix[i + 1], bold=bold, italic=True)
+                self._render_markdown_bold_italic_run(
+                    italix[i + 1],
+                    bold=bold,
+                    italic=DocumentBuilder.Italicness.ITALIC,
+                )
 
-
-    def _render_markdown_paragraph(self, text : str):
-        """
-        Render one paragraph (after it has been started)
-        """
+    def _render_markdown_paragraph(self, text: str):
+        """Render one paragraph (after it has been started)."""
         # Split the text into non-asterisked-bold/asterisked-bold runs
         bolds = ASTERISK2_RE.split(text)
         for i in range(0, len(bolds), 2):
@@ -196,16 +242,19 @@ class DocumentBuilder(ABC):
                     self._render_markdown_bold_run(bolds2[j], bold=None)
                     if j + 1 < len(bolds2):
                         # Underscored bold
-                        self._render_markdown_bold_run(bolds2[j + 1], bold=True)
+                        self._render_markdown_bold_run(
+                            bolds2[j + 1],
+                            bold=DocumentBuilder.Boldness.BOLD,
+                        )
             if i + 1 < len(bolds):
                 # Render the asterisked-bold run
-                self._render_markdown_bold_run(bolds[i + 1], bold=True)
+                self._render_markdown_bold_run(
+                    bolds[i + 1],
+                    bold=DocumentBuilder.Boldness.BOLD,
+                )
 
-
-    def _render_markdown_paragraphs(self, text : str):
-        """
-        Render consecutive non-fenced paragraphs.
-        """
+    def _render_markdown_paragraphs(self, text: str):
+        """Render consecutive non-fenced paragraphs."""
         if not text:
             return
         # Split into paragraphs, which are delimited by multiple
@@ -234,9 +283,7 @@ class DocumentBuilder(ABC):
                     # Work out what indent level we are at
                     indent = len(re_res.group(1))
                     # Which previously seen indents are still active?
-                    indents = list(
-                        itertools.takewhile(lambda x: x < indent, indents)
-                    )
+                    indents = indents[: _count_prefix_less_than(indent, indents)]
                     # And add the new one.
                     indents.append(indent)
                     if lines_so_far:
@@ -255,8 +302,7 @@ class DocumentBuilder(ABC):
                 self.new_paragraph()
                 self._render_markdown_paragraph("\n".join(lines_so_far))
 
-
-    def render_markdown(self, text : str):
+    def render_markdown(self, text: str):
         """
         Render markdown into the target document.
 
@@ -276,10 +322,18 @@ class DocumentBuilder(ABC):
             if i + 2 < len(fenceds):
                 # We don't need to look for any more markdown
                 # within fenced text so we just render it.
-                self.new_paragraph(
-                    DocumentBuilder.ParagraphType.PREFORMATTED
-                )
+                self.new_paragraph(DocumentBuilder.ParagraphType.PREFORMATTED)
                 self.add_run(fenceds[i + 2])
+
+
+def _count_prefix_less_than(num, es):
+    """Count how long a prefix of es has elements less than num."""
+    n = 0
+    for e in es:
+        if num <= e:
+            return n
+        n += 1
+    return n
 
 
 class PlainTextBuilder(DocumentBuilder):
@@ -292,25 +346,30 @@ class PlainTextBuilder(DocumentBuilder):
         ptb.render_markdown(markdown_text)
         plain_text = ptb.out
     """
+
     def __init__(self):
+        """Initialize an empty object."""
         self.out = ""
         self.first = True
 
-    def new_paragraph(self, *args, **kwargs):
+    def new_paragraph(self, *_args, **_kwargs):
+        """DocumentBuilder override."""
         if self.first:
             self.first = False
         else:
             self.out += "\n"
 
-    def add_run(self, text : str, *args, **kwargs):
+    def add_run(self, text: str, *_args, **_kwargs):
+        """DocumentBuilder override."""
         self.out += text
 
-    def add_hyperlink(self, text : str, link : str, *args, **kwargs):
-        self.out += "{0} <{1}>".format(text, link)
+    def add_hyperlink(self, text: str, link: str):
+        """DocumentBuilder override."""
+        self.out += f"{text} <{link}>"
 
 
-def markdown_to_plain_text(markdown : str) -> str:
-    """
+def markdown_to_plain_text(markdown: str) -> str:
+    r"""
     Remove the formatting from markdown.
 
     Turns the markdown into a plain text string. Paragraphs
