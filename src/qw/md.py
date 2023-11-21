@@ -34,7 +34,7 @@ def text_under_heading(text: str, heading: str) -> str:
 
 # Breaking Markdown text into paragraphs of some type
 FENCED_RE = re.compile(
-    r"(?:^|\n+)(?:~{3,}|`{3,})\s*(.*?)\n([\S\s]*?)\n(?:~{3,}|`{3,})(?:$|\n+)",
+    r"(?:^|\n+)(?:~{3,}|`{3,})[ \t]*(.*?)\n([\S\s]*?)\n(?:~{3,}|`{3,})(?:$|\n+)",
 )
 PARAGRAPH_RE = re.compile(r"\n{2,}|\n(?=\s*[\*\+\-]\s)")
 
@@ -96,7 +96,7 @@ class DocumentBuilder(ABC):
     @abstractmethod
     def new_paragraph(
         self,
-        paragraph_type: ParagraphType = None,
+        paragraph_type: ParagraphType | None = None,
         paragraph_level: int = 0,
     ):
         """
@@ -134,6 +134,10 @@ class DocumentBuilder(ABC):
         link: str,
     ):
         """Add a hyperlink to the end of the current paragraph."""
+
+    @abstractmethod
+    def end(self):
+        """End parsing."""
 
     def _render_markdown_not_pre(
         self,
@@ -257,29 +261,30 @@ class DocumentBuilder(ABC):
         """Render consecutive non-fenced paragraphs."""
         if not text:
             return
+        # We need to know how many indents we have seen so far that
+        # are still active, and how big those indents were. We need
+        # this so that when we see an indent of n spaces we know
+        # which indent that actually is. Any deeper indents are then
+        # no longer active. `indents` is a list of integers; the
+        # numbers of spaces that represent each indent.
+        indents: list[int] = []
         # Split into paragraphs, which are delimited by multiple
         # newlines or start with *, -, + or a dotted number.
         for para in PARAGRAPH_RE.split(text):
-            # We need to know how many indents we have seen so far that
-            # are still active, and how big those indents were. We need
-            # this so that when we see an indent of n spaces we know
-            # which indent that actually is. Any deeper indents are then
-            # no longer active.
-            indents = []
             # Gathered lines for non-list-item paragraphs
-            lines_so_far = []
+            lines_so_far: list[str] = []
             for line in para.splitlines():
                 # Numbered list item?
                 re_res = LISTO_RE.fullmatch(line)
-                if re_res:
+                if re_res is not None:
                     para_type = DocumentBuilder.ParagraphType.LIST_ORDERED
                 else:
                     # Bullet list item?
                     re_res = LISTU_RE.fullmatch(line)
-                    if re_res:
+                    if re_res is not None:
                         para_type = DocumentBuilder.ParagraphType.LIST_UNORDERED
                 # it is a list item
-                if re_res:
+                if re_res is not None:
                     # Work out what indent level we are at
                     indent = len(re_res.group(1))
                     # Which previously seen indents are still active?
@@ -324,6 +329,7 @@ class DocumentBuilder(ABC):
                 # within fenced text so we just render it.
                 self.new_paragraph(DocumentBuilder.ParagraphType.PREFORMATTED)
                 self.add_run(fenceds[i + 2])
+        self.end()
 
 
 def _count_prefix_less_than(num, es):
@@ -366,6 +372,9 @@ class PlainTextBuilder(DocumentBuilder):
     def add_hyperlink(self, text: str, link: str):
         """DocumentBuilder override."""
         self.out += f"{text} <{link}>"
+
+    def end(self):
+        """DocumentBuilder override."""
 
 
 def markdown_to_plain_text(markdown: str) -> str:

@@ -1,13 +1,16 @@
 """Merges data into output documents."""
 import copy
-from typing import Any, Self
+from typing import Any, TypeAlias
 
 import docx
-from docsection import DocSection, DocSectionParagraphReplacer
 from loguru import logger
-from md import markdown_to_plain_text
+
+from qw.docsection import DocSection, DocSectionParagraphReplacer
+from qw.md import markdown_to_plain_text
 
 NONE_PARAGRAPH = "*None.*"
+
+_MergeData: TypeAlias = "MergeData"
 
 
 class MergeData:
@@ -70,7 +73,7 @@ class MergeData:
     harder to implement.
     """
 
-    def __init__(self, data: dict[str, dict[str, Any] | list[dict[str, Any]]]):
+    def __init__(self, data: dict[str, Any]):
         """
         Initialize with data.
 
@@ -87,9 +90,9 @@ class MergeData:
         # objects.
         self.deeper = copy.copy(data)
         # Iterations we are currently engaged in at this level.
-        self.iterations = {}
+        self.iterations: dict[str, int] = {}
 
-    def get_data(self, field_name: str) -> (str, bool):
+    def get_data(self, field_name: str) -> tuple[str | None, bool]:
         """
         Get the named data.
 
@@ -168,7 +171,7 @@ class MergeData:
                     filter(lambda d_obj: d_obj.get(key, None) == obj_id, d_objs),
                 )
 
-    def deeper_data(self) -> Self:
+    def deeper_data(self) -> _MergeData:
         """
         Produce the data for a deeper document level.
 

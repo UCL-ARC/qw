@@ -7,14 +7,15 @@ to put the required data in.
 """
 import copy
 import re
-from typing import Self
+from typing import TypeAlias
 
 import docx
-import md
-from base import QwError
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from loguru import logger
 from lxml.etree import QName
+
+from qw import md
+from qw.base import QwError
 
 
 def qname(ns: str, val: str) -> str:
@@ -81,6 +82,8 @@ HEADING_STYLE_ID = [
 ]
 
 PREFORMATTED_FONT_NAME = "Courier"
+
+_DocSection: TypeAlias = "DocSection"
 
 
 class DocSection:
@@ -241,7 +244,7 @@ class DocSection:
         """Have we reached the document end?."""
         return len(self.element) <= self.end_index
 
-    def deeper(self) -> Self | None:
+    def deeper(self) -> _DocSection | None:
         """
         Get a deeper iterator.
 
@@ -295,7 +298,7 @@ class DocSection:
         Returns a set of all the fields present in the first
         paragraph of this section.
         """
-        r = set()
+        r: set[str] = set()
         if self.end_index == self.start_index:
             return r
         for instr in self.element[self.start_index].xpath("*/w:instrText"):
