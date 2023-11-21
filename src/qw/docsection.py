@@ -5,9 +5,9 @@ Layer over python-docx allowing looping through
 outline sections, duplicating them as necessary
 to put the required data in.
 """
-import copy
 import re
-from typing import TypeAlias
+from copy import deepcopy
+from typing import Optional, TypeAlias
 
 import docx
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -244,7 +244,7 @@ class DocSection:
         """Have we reached the document end?."""
         return len(self.element) <= self.end_index
 
-    def deeper(self) -> _DocSection | None:
+    def deeper(self) -> Optional[_DocSection]:  # noqa: UP007
         """
         Get a deeper iterator.
 
@@ -272,7 +272,7 @@ class DocSection:
         length = self.end_index - self.start_index
         # Copy the paragraphs one-by-one
         for i in range(length):
-            p = copy.deepcopy(self.element[self.start_index + i])
+            p = deepcopy(self.element[self.start_index + i])
             self.element.insert(self.end_index + i, p)
         if self.parent is not None:
             # We need to tell the shallower iteration that

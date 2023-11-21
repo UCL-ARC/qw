@@ -78,6 +78,24 @@ def test_markdown_list():
     ).text(
         "another bullet",
     ).paragraph(
+        LISTU,
+        2,
+    ).text(
+        "deeper",
+    ).paragraph(
+        LISTU,
+        1,
+    ).text(
+        "back to ",
+    ).text(
+        "1",
+        italic=ITALIC,
+    ).paragraph(
+        LISTO,
+        2,
+    ).text(
+        "deeper again",
+    ).paragraph(
         LISTO,
         0,
     ).text(
@@ -88,6 +106,9 @@ def test_markdown_list():
 2. Another **numbered** point
     * bullet
     * another bullet
+      * deeper
+    * back to _1_
+      1. deeper again
 3. Last
 """,
     )
@@ -100,7 +121,11 @@ def test_markdown_pre():
         pre=PRE,
     ).paragraph(FENCED).text(
         'int main(int argc, char** argv) {\n    printf("Hello world!");\n}',
-    ).paragraph().text("that is in C.").ends().from_markdown(
+    ).paragraph().text("that is in C.").paragraph(FENCED).text(
+        'def main():\n    print("Hello world!")',
+    ).paragraph().text(
+        "and some that's in Python.",
+    ).ends().from_markdown(
         """Some `code`
 
 ```
@@ -110,6 +135,13 @@ int main(int argc, char** argv) {
 ```
 
 that is in C.
+
+~~~~~~python
+def main():
+    print("Hello world!")
+~~~~
+
+and some that's in Python.
 """,
     )
 
