@@ -142,6 +142,12 @@ class DocSection:
         # `deeper` method.
         self.parent = parent
 
+    def first_paragraph_text(self) -> str | None:
+        """Get the text in the first paragraph."""
+        if self.end_index == self.start_index:
+            return None
+        return self.element[self.start_index].text
+
     def _get_number_level(self, element):
         """
         Get the number level.
@@ -277,19 +283,27 @@ class DocSection:
         if self.parent is not None:
             # We need to tell the shallower iteration that
             # it now has more paragraphs in its iteration.
-            self.parent._paragraph_count_changed(length)
+            self.parent._paragraph_count_changed(self.end_index, length)
 
-    def _paragraph_count_changed(self, length):
+    def _paragraph_count_changed(self, start: int, length: int):
         """
         Update the paragraph count.
 
         This is called when a DocSection created by `deeper` either
         changes the number of paragraphs it has or hears of changes
         that happened even deeper.
+
+        start -- the index of the first new paragraph that was added
+        length -- the number of new paragraphs
         """
-        self.end_index += length
+        if start <= self.start_index:
+            # we are adding paragraphs before this section
+            self.start_index += length
+        elif start <= self.end_index:
+            # we are adding paragraphs to this section
+            self.end_index += length
         if self.parent is not None:
-            self.parent._paragraph_count_changed(length)
+            self.parent._paragraph_count_changed(start, length)
 
     def fields(self) -> set[str]:
         """
@@ -348,12 +362,13 @@ class DocSection:
         """
         start = self.start_index + 1
         length = self.end_index - start
-        if length < 0:
+        if length <= 0:
             return
         for _i in range(length):
             self.element.remove(self.element[start])
+        self.end_index = start
         if self.parent:
-            self.parent._paragraph_count_changed(-length)
+            self.parent._paragraph_count_changed(start, -length)
 
     def replace_first_paragraph(
         self,
