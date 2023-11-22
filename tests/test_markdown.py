@@ -146,6 +146,17 @@ and some that's in Python.
     )
 
 
+def test_markdown_bold_and_italic():
+    """Test an ***edge*** case."""
+    Generates().paragraph().text("A ").text(
+        "strange",
+        bold=BOLD,
+        italic=ITALIC,
+    ).text(" word.").ends().from_markdown(
+        "A ***strange*** word.",
+    )
+
+
 class Generates(DocumentBuilder):
     """Builder for Markdown tester."""
 

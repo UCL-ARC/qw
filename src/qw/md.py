@@ -32,11 +32,29 @@ def text_under_heading(text: str, heading: str) -> str:
     return "\n".join(sub_heading_lines).strip()
 
 
-# Breaking Markdown text into paragraphs of some type
+# Breaking Markdown text into paragraphs of some type.
+# Picking out fenced code:
 FENCED_RE = re.compile(
-    r"(?:^|\n+)(?:~{3,}|`{3,})[ \t]*(.*?)\n([\S\s]*?)\n(?:~{3,}|`{3,})(?:$|\n+)",
+    r"""
+    (?:^|\n+)        # The start of a line
+    (?:~{3,}|`{3,})  # At least three backticks or tildes for the first fence
+    [ \t]*(.*?)\n    # Capturing the format name after the first fence
+    ([\S\s]*?)\n     # Capturing the fenced code: [\S\s] = Anything (including newlines)
+    (?:~{3,}|`{3,})  # At least three backticks or tildes for the second fence
+    (?:$|\n+)        # The end of a line
+    """,
+    re.VERBOSE,
 )
-PARAGRAPH_RE = re.compile(r"\n{2,}|\n(?=\s*[\*\+\-]\s)")
+# Paragraph delimiters. We don't test for numbers at the start of
+# lines because numbered lists must be separated from other paragraphs
+# by a blank line anyway.
+PARAGRAPH_RE = re.compile(
+    r"""
+    \n{2,}|  # a blank line
+    \n(?=\s*[\*\+\-]\s)  # a bullet at the start of the line.
+    """,
+    re.VERBOSE,
+)
 
 # Determinig the type of a paragraph
 ## - item
@@ -46,16 +64,38 @@ LISTO_RE = re.compile(r"(\s*)\d+\.\s+(.*)")
 
 # Breaking Markdown paragraphs into runs of some type
 ## **bold**
-ASTERISK2_RE = re.compile(r"\*\*(\S(?:.*\S)?)\*\*(?=[^*])")
+ASTERISK2_RE = re.compile(
+    r"""
+    \*\*(\S(?:.*\S)?)\*\*  # ** surrounding (captured) nonspaces surrounding text
+    (?=[^*])               # not followed by *, so ***text*** -> bold *text*
+    """,
+    re.VERBOSE,
+)
 ## __bold__
-UNDERSCORE2_RE = re.compile(r"(?:^|(?<=\s))__(\S(?:.*\S)?)__(?:$|(?=\s))")
+UNDERSCORE2_RE = re.compile(
+    r"""
+    (?:^|(?<=\s))      # start of text or previous space
+    __(\S(?:.*\S)?)__  # __ surrounding (captured) nonspaces surrounding text
+    (?:$|(?=\s))       # end of text or following space
+    """,
+    re.VERBOSE,
+)
 ## *italic*
 ASTERISK1_RE = re.compile(r"\*(\S(?:.*\S)?)\*")
 ## _italic_
-UNDERSCORE1_RE = re.compile(r"(?:^|(?<=\s))_(\S(?:.*\S)?)_(?:$|(?=\s))")
+UNDERSCORE1_RE = re.compile(
+    r"""
+    (?:^|(?<=\s))    # start of text or previous space
+    _(\S(?:.*\S)?)_  # _ surrounding (captured) nonspaces surrounding text
+    (?:$|(?=\s))     # end of text or following space
+    """,
+    re.VERBOSE,
+)
 ## `preformated`
 BACKTICK_RE = re.compile(r"`([^` \t\r\n].*?)`")
+## hyperlink looking like [[link]]
 SQUARE2_RE = re.compile(r"\[\[(.+?)\]\](?=[^\]])")
+## hyperlink looking like (text)[link]
 LINK_RE = re.compile(r"\[(.+?)\]\((.+?)\)")
 
 
