@@ -1,0 +1,2 @@
+*.docx
+/tests/resources/markdown/test_data.md
