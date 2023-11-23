@@ -703,3 +703,6 @@ class DocSectionParagraphReplacer(md.DocumentBuilder):
     ):
         """DocumentBuilder override."""
         self.section.add_hyperlink(text, link)
+
+    def end(self):
+        """DocumentBuilder override."""

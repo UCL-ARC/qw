@@ -164,5 +164,8 @@ cython_debug/
 # MS Word temporary lock files
 .~lock*
 
+# IDE
+.vscode/
+
 # Our stuff
 .qw/

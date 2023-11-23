@@ -288,7 +288,10 @@ class Document:
                 replacer = DocSectionParagraphReplacer(section)
                 replacer.render_markdown(NONE_PARAGRAPH)
                 return
-            replacement = markdown_to_plain_text(replacement_md)
+            if isinstance(replacement_md, str):
+                replacement = markdown_to_plain_text(replacement_md)
+            else:
+                replacement = str(replacement_md)
             section.replace_field(field_name, replacement)
 
     def write(self, output_file: str, data: dict[str, list[str]]) -> None:

@@ -126,3 +126,52 @@ def test_docsection_delete_nonhead():
     assert not s3.next_section()
     s2.next_section()
     assert s2.first_paragraph_text() == "Second heading two"
+
+
+def test_docsection_replace_paragraph():
+    """Test paragraph replacement."""
+    doc = docx.Document(
+        "tests/resources/msword/DocSection_fields.docx",
+    )
+    s1 = DocSection(doc)
+    s1.next_section()
+    s2 = s1.deeper()
+    s2.next_section()
+    s3 = s2.deeper()
+    s3.next_section()
+    assert s3.first_paragraph_text() == "<software-component.description>"
+    s3.replace_first_paragraph(None)
+    replacement = "Replacement text"
+    s3.add_run(replacement)
+    assert s3.first_paragraph_text() == replacement
+    s2 = s1.deeper()
+    s2.next_section()
+    s3 = s2.deeper()
+    s3.next_section()
+    assert s3.first_paragraph_text() == replacement
+    assert s2.next_section()
+    assert s2.first_paragraph_text() == "Heading Two"
+
+
+def test_docsection_replace_field():
+    """Test field replacement."""
+    doc = docx.Document(
+        "tests/resources/msword/DocSection_fields.docx",
+    )
+    s1 = DocSection(doc)
+    s1.next_section()
+    s2 = s1.deeper()
+    s2.next_section()
+    component_id = "software-component.id"
+    component_name = "software-component.name"
+    assert s2.fields() == {
+        component_id,
+        component_name,
+    }
+    s2.replace_field(component_name, "The Name")
+    assert s2.fields() == {
+        component_id,
+    }
+    assert s2.first_paragraph_text() == (
+        f"Paragraph with fields <{component_id}> and The Name."
+    )
