@@ -153,23 +153,42 @@ class MergeData:
         logger.debug("iteration for {0} is now {1}", key, i)
         objs = self.data[key]
         if objs is None or len(objs) <= i:
+            logger.debug("no more objects")
             return
         obj = objs[i]
         if not isinstance(obj, dict):
-            return
-        obj_id = obj.get("id", None)
-        if obj_id is None:
+            logger.debug("not a real object")
             return
         # Find out which other values in self.data
         # are refer to obj
         for d_key, d_objs in self.data.items():
             # do the d_objs refer back to `key`?
-            if isinstance(d_objs, list) and len(d_objs) != 0 and key in d_objs[0]:
+            if isinstance(d_objs, list) and len(d_objs) != 0:
                 # Yes, so filter them to those that refer to
                 # key in the deeper data.
                 self.deeper[d_key] = list(
-                    filter(lambda d_obj: d_obj.get(key, None) == obj_id, d_objs),
+                    self.find_refs(d_key, d_objs, key, obj)
                 )
+
+    def find_refs(self, from_obj_type, from_objs, to_obj_type, to_obj):
+        logger.debug("Are there refs from {} to {}", from_obj_type, to_obj)
+        if from_obj_type == "requirement" and to_obj_type == "user-need":
+            key = "user_need"
+            obj_id = to_obj.get("internal_id", None)
+            if obj_id == None:
+                logger.debug("No, there's no internal ID in the linked to obj")
+                return []
+            obj_id = f"#{obj_id}"
+        else:
+            logger.debug("No.")
+            return []
+        logger.debug("Looking for {} = {} in {}", key, obj_id, from_objs)
+        refs = list(filter(
+            lambda from_obj: from_obj.get(key, None) == obj_id,
+            from_objs
+        ))
+        logger.debug("found backreferences {}", refs)
+        return refs
 
     def deeper_data(self) -> _MergeData:
         """

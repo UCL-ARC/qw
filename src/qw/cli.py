@@ -6,6 +6,7 @@ Helps enforce regulatory compliance for projects managed on GitHub.
 
 import sys
 from enum import Enum
+import re
 from typing import Annotated, Optional
 
 import git
@@ -15,6 +16,9 @@ from rich.prompt import Prompt
 
 from qw.base import QwError
 from qw.changes import ChangeHandler
+from qw.design_stages.main import (
+    get_local_stages, UserNeed, Requirement
+)
 from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
 from qw.mergedoc import load_template
@@ -64,6 +68,12 @@ def main(
             help="Level of logging to output",
         ),
     ] = LogLevel.INFO,
+    logmodule: Annotated[
+        list[str],
+        typer.Option(
+            help="Modules to log (default all)"
+        ),
+    ] = [],
 ):
     """
     Process global options.
@@ -71,8 +81,16 @@ def main(
     Processes the options passed before the command.
     """
     logger.remove()
-    if loglevel is not None:
-        logger.add(sys.stderr, level=LOGLEVEL_TO_LOGURU[loglevel])
+    logfilter = {"": True}
+    if len(logmodule) != 0:
+        logfilter = {"": False}
+        for lm in logmodule:
+            logfilter[lm] = True
+    logger.add(
+        sys.stderr,
+        level=LOGLEVEL_TO_LOGURU[loglevel],
+        filter=logfilter,
+    )
 
 
 @app.command()
@@ -215,91 +233,64 @@ def configure(
         "Updated remote repository with rules",
     )
 
+@app.command()
+def generate_merge_fields(
+    output: Annotated[
+        str,
+        typer.Option(
+            help="Output file name",
+        ),
+    ] = "fields.csv"
+):
+    """
+    Produce a file that can be imported into MS Word.
+
+    In MS Word 2010 you choose "Select Recipients|Use Existing List..."
+    from the "Mailings" ribbon, then choose this file. Now you can
+    insert fields by clicking "Insert Merge Field" (still in the
+    "Mailings" ribbon) and selecting the field you want.
+
+    In LibreOffice you upload this file from the
+    Insert|Field|More Fields... dialog, in the Database tab, with
+    the "Mail merge fields" Type highlighted. You can add this file
+    with the "Add database file" Browse... button. Open up the new
+    item that appears and now you can highlight the field you want and
+    click "Insert field". You can leave this dialog open and insert more
+    fields as you edit the document.
+    """
+    headings = []
+    examples = []
+    for cls in [UserNeed, Requirement]:
+        name = cls.design_stage.value
+        fields = cls.base_fields | cls.not_required_fields
+        for f in fields:
+            field = f"{name}.{f}"
+            headings.append(field)
+            examples.append(f"<{field}>")
+    with open(output, "wt") as out:
+        out.write("\n".join([
+            ",".join(line)
+            for line in [headings, examples]
+        ]))
 
 @app.command()
 def release():
     """Produce documentation by merging frozen values into templates."""
-    doc = load_template("tests/resources/msword/test_template.docx")
-    doc.write(
-        output_file="out.docx",
-        data={
-            "soup": [
-                {
-                    "id": "34",
-                    "name": "Python",
-                    "description": "The **Python** programming language",
-                },
-                {
-                    "id": "75",
-                    "name": "python-docx",
-                    "description": (
-                        "The *Python* module `python-docx`.\n"
-                        "* provides access to MS Word Documents\n"
-                        "* Isn't very good"
-                    ),
-                },
-            ],
-            "software-requirement": [
-                {
-                    "id": "101",
-                    "name": "Dose input",
-                    "description": "Allow the user to input the *dose*.",
-                    "system-requirement": "31",
-                },
-                {
-                    "id": "102",
-                    "name": "Dose measurement",
-                    "description": ("The *hardware* must measure the dose given."),
-                    "system-requirement": "32",
-                },
-                {
-                    "id": "103",
-                    "name": "Dose articulation",
-                    "description": (
-                        "The *hardware* must stop delivering the"
-                        " medicine when dose given meets the dose"
-                        " required."
-                    ),
-                    "system-requirement": "32",
-                },
-                {
-                    "id": "104",
-                    "name": "Lock screen",
-                    "description": (
-                        "The [screen](https://dictionary.cambridge.org"
-                        "/dictionary/english/screen) should show"
-                        " `locked` when the _lock_ button is pressed"
-                    ),
-                    "system-requirement": "33",
-                },
-            ],
-            "system-requirement": [
-                {
-                    "id": "31",
-                    "name": "Dose input",
-                    "description": "User must be able to input the dose",
-                },
-                {
-                    "id": "32",
-                    "name": "Dose correct",
-                    "description": "Dose must match the input dose",
-                },
-                {
-                    "id": "33",
-                    "name": "Lockable",
-                    "description": (
-                        "Device should be easily lockable and only"
-                        " unlockable by the registered user."
-                    ),
-                },
-                {
-                    "id": "34",
-                    "name": "Something else",
-                    "description": "Are we having **fun** yet?",
-                },
-            ],
-        },
-    )
+    data = get_merge_data()
+    for (wt_path, wt_out) in store.release_word_templates():
+        doc = load_template(wt_path)
+        doc.write(output_file=wt_out, data=data)
+
+def get_merge_data() -> dict[str, list[dict[str, any]]]:
+    stages = get_local_stages(store)
+    data = {}
+    for s in stages:
+        sd = s.to_dict()
+        typ = sd['stage'].value
+        if typ not in data:
+            data[typ] = []
+        data[typ].append(sd)
+    return data
 
 
 if __name__ == "__main__":

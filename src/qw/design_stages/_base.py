@@ -4,7 +4,7 @@ from copy import copy
 from typing import Any, Self
 
 from qw.base import QwError
-from qw.design_stages.categories import RemoteItemType
+from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.remote_repo.service import Issue
 
 
@@ -13,6 +13,10 @@ class DesignBase(ABC):
 
     # to be overriden by child classes for specific fields that are allowed to be empty.
     not_required_fields: frozenset[str] = frozenset()
+    base_fields: frozenset[set] = frozenset(
+        ["title", "description", "internal_id", "version"]
+    )
+    design_stage: DesignStage | None = None
 
     def __init__(self) -> None:
         """Shared fields for all design stage classes."""
@@ -20,7 +24,7 @@ class DesignBase(ABC):
         self.description: str | None = None
         self.internal_id: int | None = None
         self.remote_item_type: RemoteItemType | None = None
-        self.stage: DesignBase | None = None
+        self.stage: DesignStage | None = self.design_stage
         self.version = 1
 
     def __repr__(self):
