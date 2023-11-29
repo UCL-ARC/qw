@@ -1,5 +1,6 @@
 """Base class for design stages."""
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from copy import copy
 from typing import Any, Self
 
@@ -13,8 +14,8 @@ class DesignBase(ABC):
 
     # to be overriden by child classes for specific fields that are allowed to be empty.
     not_required_fields: frozenset[str] = frozenset()
-    base_fields: frozenset[set] = frozenset(
-        ["title", "description", "internal_id", "version"]
+    base_fields: frozenset[str] = frozenset(
+        ["title", "description", "internal_id", "version"],
     )
     design_stage: DesignStage | None = None
 
@@ -68,6 +69,28 @@ class DesignBase(ABC):
             instance.__dict__[key] = value
 
         return instance
+
+    @classmethod
+    def is_dict_backreference(
+        cls,
+        _self_dict: dict[str, Any],
+        _from_stage_name: str,
+    ) -> Callable[[dict[str, Any]], bool] | None:
+        """
+        Identify dicts from objects that reference this one.
+
+        Let s be an object of this Self type, and fset be a set of
+        objects of class F, a different subclass of DesignBase.
+        Then self_dict = s.to_dict(),
+        from_stage_name = F.design_stage.value.
+
+        This function returns a predicate p. For each element f of
+        fset, p(f.to_dict()) returns True if (and only if) f refers
+        to s.
+
+        Returns None instead of a function that always returns False.
+        """
+        return None
 
     def diff(self, other: Self) -> dict[str, dict[str, str]]:
         """

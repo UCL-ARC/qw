@@ -6,8 +6,8 @@ Helps enforce regulatory compliance for projects managed on GitHub.
 
 import sys
 from enum import Enum
-import re
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Annotated, Any, Optional
 
 import git
 import typer
@@ -17,7 +17,10 @@ from rich.prompt import Prompt
 from qw.base import QwError
 from qw.changes import ChangeHandler
 from qw.design_stages.main import (
-    get_local_stages, UserNeed, Requirement
+    Requirement,
+    UserNeed,
+    get_design_stage_class_from_name,
+    get_local_stages,
 )
 from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
@@ -63,7 +66,7 @@ def _build_and_check_service():
 @app.callback()
 def main(
     loglevel: Annotated[
-        Optional[LogLevel],
+        LogLevel,
         typer.Option(
             help="Level of logging to output",
         ),
@@ -71,9 +74,9 @@ def main(
     logmodule: Annotated[
         list[str],
         typer.Option(
-            help="Modules to log (default all)"
+            help="Modules to log (default all)",
         ),
-    ] = [],
+    ] = [],  # noqa: B006
 ):
     """
     Process global options.
@@ -82,7 +85,7 @@ def main(
     """
     logger.remove()
     logfilter = {"": True}
-    if len(logmodule) != 0:
+    if logmodule is not None and len(logmodule) != 0:
         logfilter = {"": False}
         for lm in logmodule:
             logfilter[lm] = True
@@ -233,14 +236,16 @@ def configure(
         "Updated remote repository with rules",
     )
 
+
 @app.command()
 def generate_merge_fields(
     output: Annotated[
-        str,
+        Path,
         typer.Option(
             help="Output file name",
+            writable=True,
         ),
-    ] = "fields.csv"
+    ] = Path("fields.csv"),
 ):
     """
     Produce a file that can be imported into MS Word.
@@ -267,26 +272,46 @@ def generate_merge_fields(
             field = f"{name}.{f}"
             headings.append(field)
             examples.append(f"<{field}>")
-    with open(output, "wt") as out:
-        out.write("\n".join([
-            ",".join(line)
-            for line in [headings, examples]
-        ]))
+    with output.open("w") as out:
+        out.write("\n".join([",".join(line) for line in [headings, examples]]))
+
 
 @app.command()
 def release():
     """Produce documentation by merging frozen values into templates."""
-    data = get_merge_data()
-    for (wt_path, wt_out) in store.release_word_templates():
+    data = _get_merge_data()
+    for wt_path, wt_out in store.release_word_templates():
         doc = load_template(wt_path)
-        doc.write(output_file=wt_out, data=data)
+        doc.write(
+            output_file=wt_out,
+            data=data,
+            filter_references=filter_data_references,
+        )
 
-def get_merge_data() -> dict[str, list[dict[str, any]]]:
+
+def filter_data_references(from_obj_type, from_objs, to_obj_type, to_obj):
+    """
+    Find backreferences.
+
+    Finds the objects in the from_objs iterable that refer to to_obj.
+    """
+    to_obj_class = get_design_stage_class_from_name(to_obj_type)
+    if to_obj_class is None:
+        return None
+    is_backref = to_obj_class.is_dict_backreference(to_obj, from_obj_type)
+    if is_backref is None:
+        return None
+    logger.debug("Can we find any in {}", from_objs)
+    return filter(is_backref, from_objs)
+
+
+def _get_merge_data() -> dict[str, list[dict[str, Any]]]:
+    """Fetch frozen data for MS Word merge."""
     stages = get_local_stages(store)
-    data = {}
+    data: dict[str, list[dict[str, Any]]] = {}
     for s in stages:
         sd = s.to_dict()
-        typ = sd['stage'].value
+        typ = sd["stage"].value
         if typ not in data:
             data[typ] = []
         data[typ].append(sd)

@@ -1,5 +1,6 @@
 """Merges data into output documents."""
 import copy
+from collections.abc import Callable
 from typing import Any, TypeAlias
 
 import docx
@@ -52,28 +53,41 @@ class MergeData:
     paragraphs beneath it including subheadings) will be copied
     enough times to hold each value.
 
-    Some of these objects might refer to each other. So, if an
-    object "MyObject" has a value "OtherObjectName": "123" and there
-    is an object called "OtherObjectName", the value is assumed to
-    refer to the "OtherObjectName" objects whose "id" key is "123".
+    Some of these objects might refer to each other. The argument
+    filter_referencers is a function taking arguments
+    (from_obj_type, from_objs, to_obj_type, to_obj).
+    from_obj_type is a key from data and from_objs are the
+    associated values. to_obj_type is a different key from data
+    and to_obj is one of the associated values. The function
+    should return those elements of from_objs that refer to
+    to_obj. If the from_obj_type objects never refer to
+    to_obj_type objects, None should be returned.
 
-    We can use this for nested loops. In this case if you have a
-    section of the document with fields from "OtherObjectName" with
-    "id": "123" then the fields referring to "MyObject" will only
-    select those "MyObject" objects whose "OtherObjectName" values
-    match "123".
+    We can use this for nested loops. If filter_references returns
+    a subset, these will be the only ones of those objects
+    available to the paragraphs under this one.
 
-    In this way we can have a heading advertising "OtherObjectName"
-    and then subheadings advertising "MyObject" and each MyObject
-    subheading will be placed nicely under the correct
-    "OtherObjectName" heading.
-
-    This will also work with nested lists. It will eventually work
-    with tables, too, but that might be harder to describe and
-    harder to implement.
+    This works for headings with paragraphs underneath, and for
+    lists with sublists underneath.
     """
 
-    def __init__(self, data: dict[str, Any]):
+    # Type of a function that filters objects to be only those
+    # that point to another object
+    FilterReferencesCallable: TypeAlias = Callable[
+        [
+            str,  # from_obj_type
+            list[dict[str, Any]],  # from_objs
+            str,  # to_obj_type
+            dict[str, Any],  # to_obj
+        ],
+        list[dict[str, Any]],
+    ]
+
+    def __init__(
+        self,
+        data: dict[str, Any],
+        filter_referencers: FilterReferencesCallable,
+    ):
         """
         Initialize with data.
 
@@ -81,6 +95,34 @@ class MergeData:
 
         [{"ObjectNames": [{"key"; "value"}]},
         "ObjectName": {"key", "value"}}]
+
+        The filter_references callable takes arguments:
+
+        filter_references(from_obj_type, from_obj, to_obj_type, to_obj)
+
+        For example:
+
+        filter_references(
+            "software-requirement",
+            [
+                {"id":5, "user-need": 1, ... },
+                {"id":6, "user-need": 2, ... },
+                {"id":7, "user-need": 2, ... },
+                {"id":8, "user-need": 3, ... },
+            ]
+            "user-need",
+            {"id": 2, ... }
+        )
+
+        and in this case should return:
+
+        [
+            {"id":6, "user-need": 2, ... },
+            {"id":7, "user-need": 2, ... },
+        ]
+
+        because these are the elements of from_obj that refer to the
+        to_obj argument.
         """
         logger.debug("Data: {0}", data)
         self.data = data
@@ -91,6 +133,7 @@ class MergeData:
         self.deeper = copy.copy(data)
         # Iterations we are currently engaged in at this level.
         self.iterations: dict[str, int] = {}
+        self.filter_referencers = filter_referencers
 
     def get_data(self, field_name: str) -> tuple[str | None, bool]:
         """
@@ -162,33 +205,11 @@ class MergeData:
         # Find out which other values in self.data
         # are refer to obj
         for d_key, d_objs in self.data.items():
-            # do the d_objs refer back to `key`?
             if isinstance(d_objs, list) and len(d_objs) != 0:
-                # Yes, so filter them to those that refer to
-                # key in the deeper data.
-                self.deeper[d_key] = list(
-                    self.find_refs(d_key, d_objs, key, obj)
-                )
-
-    def find_refs(self, from_obj_type, from_objs, to_obj_type, to_obj):
-        logger.debug("Are there refs from {} to {}", from_obj_type, to_obj)
-        if from_obj_type == "requirement" and to_obj_type == "user-need":
-            key = "user_need"
-            obj_id = to_obj.get("internal_id", None)
-            if obj_id == None:
-                logger.debug("No, there's no internal ID in the linked to obj")
-                return []
-            obj_id = f"#{obj_id}"
-        else:
-            logger.debug("No.")
-            return []
-        logger.debug("Looking for {} = {} in {}", key, obj_id, from_objs)
-        refs = list(filter(
-            lambda from_obj: from_obj.get(key, None) == obj_id,
-            from_objs
-        ))
-        logger.debug("found backreferences {}", refs)
-        return refs
+                # do the d_objs refer back to `key`?
+                backrefs = self.filter_referencers(d_key, d_objs, key, obj)
+                if backrefs is not None:
+                    self.deeper[d_key] = list(backrefs)
 
     def deeper_data(self) -> _MergeData:
         """
@@ -203,7 +224,7 @@ class MergeData:
         for k, i in self.iterations.items():
             objs = self.data[k]
             self.deeper[k] = objs[i] if i < len(objs) else None
-        return MergeData(self.deeper)
+        return MergeData(self.deeper, self.filter_referencers)
 
     def next_section(self):
         """
@@ -313,14 +334,23 @@ class Document:
                 replacement = str(replacement_md)
             section.replace_field(field_name, replacement)
 
-    def write(self, output_file: str, data: dict[str, list[str]]) -> None:
+    def write(
+        self,
+        output_file: str,
+        data: dict[str, list[str]],
+        filter_referencers: MergeData.FilterReferencesCallable,
+    ) -> None:
         """
         Write out a document based on the template.
 
         outputFile -- the filename to write to.
         data -- the data to place into the fields.
+        filter_referencers -- see MergeData.__init__
         """
-        self._interpolate_sections(self.top, MergeData(data))
+        self._interpolate_sections(
+            self.top,
+            MergeData(data, filter_referencers),
+        )
         self.docx.save(output_file)
 
 

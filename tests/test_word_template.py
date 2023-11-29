@@ -4,6 +4,7 @@ from tempfile import NamedTemporaryFile
 
 import docx
 
+from qw.cli import filter_data_references
 from qw.mergedoc import load_template
 
 
@@ -49,7 +50,7 @@ def test_replace_fields_with_data():
                 },
             ],
         }
-        doc.write(temp_file, data)
+        doc.write(temp_file, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         pwf_para = "Paragraph with fields {id} and {name}."
         expecteds = [
@@ -89,60 +90,60 @@ def test_replace_hierarchical_fields_with_data():
     )
     with NamedTemporaryFile("w+b") as temp_file:
         data = {
-            "software-requirement": [
+            "requirement": [
                 {
-                    "id": 1,
-                    "name": "Display dose",
+                    "internal_id": 1,
+                    "title": "Display dose",
                     "description": "Put the dose on the screen.",
-                    "system-requirement": 101,
+                    "user_need": "#101",
                 },
                 {
-                    "id": 2,
-                    "name": "Update dose",
+                    "internal_id": 2,
+                    "title": "Update dose",
                     "description": "The dose on screen is updated as the controls are adjusted.",
-                    "system-requirement": 101,
+                    "user_need": "#101",
                 },
                 {
-                    "id": 3,
-                    "name": "Stop plunger",
+                    "internal_id": 3,
+                    "title": "Stop plunger",
                     "description": "Stop the plunger as the required dose is met",
-                    "system-requirement": 102,
+                    "user_need": "#102",
                 },
             ],
-            "system-requirement": [
+            "user-need": [
                 {
-                    "id": 101,
-                    "name": "Show the dose",
+                    "internal_id": 101,
+                    "title": "Show the dose",
                     "description": "The user needs to be able to read out the dose on a screen.",
                 },
                 {
-                    "id": 102,
-                    "name": "Deliver the dose",
+                    "internal_id": 102,
+                    "title": "Deliver the dose",
                     "description": "The patient needs to receive the expected dose.",
                 },
                 {
-                    "id": 103,
-                    "name": "Have a party",
+                    "internal_id": 103,
+                    "title": "Have a party",
                     "description": "The developers need a break.",
                 },
             ],
         }
-        doc.write(temp_file, data)
+        doc.write(temp_file, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         expecteds = []
-        for sysreq in data["system-requirement"]:
-            sysr_id = sysreq["id"]
+        for sysreq in data["user-need"]:
+            sysr_id = sysreq["internal_id"]
             expecteds.extend(
                 [
                     f"System requirement {sysr_id}",
-                    sysreq["name"],
+                    sysreq["title"],
                     sysreq["description"],
                 ],
             )
             softreqs = list(
                 filter(
-                    lambda soft: soft["system-requirement"] == sysr_id,
-                    data["software-requirement"],
+                    lambda soft: soft["user_need"] == f"#{sysr_id}",
+                    data["requirement"],
                 ),
             )
             expecteds.append("Implemented by the following software requirements:")
@@ -152,7 +153,7 @@ def test_replace_hierarchical_fields_with_data():
                 for softreq in softreqs:
                     expecteds.extend(
                         [
-                            "{id}: {name}".format(**softreq),
+                            "{internal_id}: {title}".format(**softreq),
                             softreq["description"],
                         ],
                     )

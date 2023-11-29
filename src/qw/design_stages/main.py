@@ -39,6 +39,21 @@ class UserNeed(DesignBase):
         instance.requirement = text_under_heading(issue.body, "Requirements")
         return instance
 
+    @classmethod
+    def is_dict_backreference(cls, self_dict, from_stage_name):
+        """Identify Requirements dicts that refer to self_dict."""
+        logger.debug("User Need backreferences from {}?", from_stage_name)
+        if from_stage_name != DesignStage.REQUIREMENT.value:
+            logger.debug("No")
+            return None
+        internal_id = self_dict.get("internal_id", None)
+        if internal_id is None:
+            logger.debug("No internal_id!")
+            return None
+        iid = f"#{internal_id}"
+        logger.debug("Looking for .user_need == {}", iid)
+        return lambda d: d.get("user_need", None) == iid
+
 
 class Requirement(DesignBase):
     """Requirement Design stage."""
@@ -69,6 +84,18 @@ class Requirement(DesignBase):
         return instance
 
 
+_DESIGN_STAGE_CLASS = {
+    ds_class.design_stage.value: ds_class for ds_class in DesignBase.__subclasses__()
+}
+
+
+def get_design_stage_class_from_name(name: str) -> type[DesignBase] | None:
+    """Get the subclass of DesignBase from a DesignStage enum value."""
+    if name in _DESIGN_STAGE_CLASS:
+        return _DESIGN_STAGE_CLASS[name]
+    return None
+
+
 DesignStages = list[UserNeed | Requirement]
 
 
@@ -96,10 +123,9 @@ def _build_design_stage_or_throw(data_item: dict[str, Any]):
             f"should be one of {[stage.value for stage in DesignStage]}"
         )
         raise QwError(msg) from exception
-    if stage == DesignStage.REQUIREMENT:
-        return Requirement.from_dict(data_item)
-    if stage == DesignStage.NEED:
-        return UserNeed.from_dict(data_item)
+    design_stage_class = get_design_stage_class_from_name(stage)
+    if design_stage_class is not None:
+        return design_stage_class.from_dict(data_item)
 
     not_implemented = f"{stage} not implemented"
     raise QwError(not_implemented)
