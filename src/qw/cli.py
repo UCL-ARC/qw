@@ -76,6 +76,14 @@ def main(
         typer.Option(
             help="Modules to log (default all)",
         ),
+        # In order to pass all ruff, mypy and black,
+        # we need a default, we need it to match the annotation,
+        # we need the annotation not to be list[str] | None, we
+        # need it not to be a mutable object. There is nothing
+        # that matches all four, so we use []. typer will use
+        # this if no --logmodule option is given, but we are not
+        # changing it and this function is only called once, so
+        # it does not really matter.
     ] = [],  # noqa: B006
 ):
     """
