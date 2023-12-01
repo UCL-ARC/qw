@@ -1,12 +1,11 @@
 """Base class for design stages."""
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Callable
 from copy import copy
 from typing import Any, Self
 
 from qw.base import QwError
 from qw.design_stages.categories import DesignStage, RemoteItemType
-from qw.remote_repo.service import Issue
 
 
 class DesignBase(ABC):
@@ -118,14 +117,3 @@ class DesignBase(ABC):
                 output_fields[field_name]["other"] = str(other_data)
 
         return output_fields
-
-    @classmethod
-    @abstractmethod
-    def from_issue(cls, issue: Issue) -> Self:
-        """
-        Create requirement from issue data.
-
-        :param issue: issue data from remote repository
-        :return: Design stsage instance
-        """
-        ...

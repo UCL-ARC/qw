@@ -8,7 +8,7 @@ from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
-from qw.remote_repo.service import Issue, Service
+from qw.remote_repo.service import Issue, PullRequest, Service
 
 
 class UserNeed(DesignBase):
@@ -84,6 +84,39 @@ class Requirement(DesignBase):
         return instance
 
 
+class DesignOutput(DesignBase):
+    """Output Design Stage."""
+
+    design_stage = DesignStage.OUTPUT
+
+    def __init__(self) -> None:
+        """
+        Initialize DesignOutput (internal only).
+
+        Please use the from_markdown or from_dict methods instead of
+        using this constructor.
+        """
+        super().__init__()
+        self.requirement: str | None = None
+        self.remote_item_type = RemoteItemType.REQUEST
+
+    @classmethod
+    def from_pr(cls, pr: PullRequest) -> Self:
+        """
+        Create design output from issue data.
+
+        :param issue: pull request data from remote repository
+        :return: DesignOutput instance
+        """
+        instance = cls()
+
+        instance.title = pr.title
+        instance.internal_id = pr.number
+        instance.description = pr.body
+        instance.closing_issues = pr.closing_issues
+        return instance
+
+
 _DESIGN_STAGE_CLASS = {
     ds_class.design_stage.value: ds_class for ds_class in DesignBase.__subclasses__()
 }
@@ -149,6 +182,14 @@ def get_remote_stages(service: Service) -> DesignStages:
         # Could have multiple design stages from the same pull request so allow multiple outputs from a single issue
         if "qw-user-need" in issue.labels:
             output_stages.append(UserNeed.from_issue(issue))
-        if "qw-requirement" in issue.labels:
+        elif "qw-requirement" in issue.labels:
             output_stages.append(Requirement.from_issue(issue))
+    for pr in service.pull_requests:
+        if "qw-ignore" in issue.labels:
+            logger.debug(
+                "PR {number} tagged to be ignored, skipping",
+                number=pr.number,
+            )
+            continue
+        output_stages.append(DesignOutput.from_pr(pr))
     return output_stages
