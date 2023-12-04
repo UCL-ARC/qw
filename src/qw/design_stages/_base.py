@@ -70,7 +70,7 @@ class DesignBase(ABC):
         return instance
 
     @classmethod
-    def is_dict_backreference(
+    def is_dict_reference(
         cls,
         _self_dict: dict[str, Any],
         _from_stage_name: str,

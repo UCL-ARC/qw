@@ -63,7 +63,7 @@ class MergeData:
     to_obj. If the from_obj_type objects never refer to
     to_obj_type objects, None should be returned.
 
-    We can use this for nested loops. If filter_references returns
+    We can use this for nested loops. If filter_referencers returns
     a subset, these will be the only ones of those objects
     available to the paragraphs under this one.
 
@@ -96,13 +96,13 @@ class MergeData:
         [{"ObjectNames": [{"key"; "value"}]},
         "ObjectName": {"key", "value"}}]
 
-        The filter_references callable takes arguments:
+        The filter_referencers callable takes arguments:
 
-        filter_references(from_obj_type, from_obj, to_obj_type, to_obj)
+        filter_referencers(from_obj_type, from_obj, to_obj_type, to_obj)
 
         For example:
 
-        filter_references(
+        filter_referencers(
             "software-requirement",
             [
                 {"id":5, "user-need": 1, ... },

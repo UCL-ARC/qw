@@ -40,7 +40,7 @@ class UserNeed(DesignBase):
         return instance
 
     @classmethod
-    def is_dict_backreference(cls, self_dict, from_stage_name):
+    def is_dict_reference(cls, self_dict, from_stage_name):
         """Identify Requirements dicts that refer to self_dict."""
         logger.debug("User Need backreferences from {}?", from_stage_name)
         if from_stage_name != DesignStage.REQUIREMENT.value:
@@ -116,16 +116,26 @@ class DesignOutput(DesignBase):
         instance.closing_issues = pr.closing_issues
         return instance
 
+    @classmethod
+    def is_dict_reference(cls, self_dict, from_stage_name):
+        """Identify Requirements dicts that self_dict referes to."""
+        if from_stage_name != DesignStage.REQUIREMENT.value:
+            return None
+        requirements = self_dict.get("closing_issues", [])
+        logger.debug("Requirements are: {}", requirements)
+        return lambda d: d.get("internal_id", None) in requirements
 
-_DESIGN_STAGE_CLASS = {
-    ds_class.design_stage.value: ds_class for ds_class in DesignBase.__subclasses__()
+
+DESIGN_STAGE_CLASSES = DesignBase.__subclasses__()
+_DESIGN_STAGE_CLASS_FROM_NAME = {
+    ds_class.design_stage.value: ds_class for ds_class in DESIGN_STAGE_CLASSES
 }
 
 
 def get_design_stage_class_from_name(name: str) -> type[DesignBase] | None:
     """Get the subclass of DesignBase from a DesignStage enum value."""
-    if name in _DESIGN_STAGE_CLASS:
-        return _DESIGN_STAGE_CLASS[name]
+    if name in _DESIGN_STAGE_CLASS_FROM_NAME:
+        return _DESIGN_STAGE_CLASS_FROM_NAME[name]
     return None
 
 

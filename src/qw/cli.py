@@ -17,8 +17,7 @@ from rich.prompt import Prompt
 from qw.base import QwError
 from qw.changes import ChangeHandler
 from qw.design_stages.main import (
-    Requirement,
-    UserNeed,
+    DESIGN_STAGE_CLASSES,
     get_design_stage_class_from_name,
     get_local_stages,
 )
@@ -273,7 +272,7 @@ def generate_merge_fields(
     """
     headings = []
     examples = []
-    for cls in [UserNeed, Requirement]:
+    for cls in DESIGN_STAGE_CLASSES:
         name = cls.design_stage.value
         fields = cls.base_fields | cls.not_required_fields
         for f in fields:
@@ -293,7 +292,7 @@ def release():
         doc.write(
             output_file=wt_out,
             data=data,
-            filter_references=filter_data_references,
+            filter_referencers=filter_data_references,
         )
 
 
@@ -306,7 +305,7 @@ def filter_data_references(from_obj_type, from_objs, to_obj_type, to_obj):
     to_obj_class = get_design_stage_class_from_name(to_obj_type)
     if to_obj_class is None:
         return None
-    is_backref = to_obj_class.is_dict_backreference(to_obj, from_obj_type)
+    is_backref = to_obj_class.is_dict_reference(to_obj, from_obj_type)
     if is_backref is None:
         return None
     logger.debug("Can we find any in {}", from_objs)

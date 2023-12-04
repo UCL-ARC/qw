@@ -127,6 +127,20 @@ def test_replace_hierarchical_fields_with_data():
                     "description": "The developers need a break.",
                 },
             ],
+            "design-output": [
+                {
+                    "internal_id": 24,
+                    "title": "Screen rendering",
+                    "description": "Dose rendered on the screen.",
+                    "closing_issues": [1, 2],
+                },
+                {
+                    "internal_id": 25,
+                    "title": "Plunger control",
+                    "description": "Drive plunger according to configuration.",
+                    "closing_issues": [3],
+                },
+            ],
         }
         doc.write(temp_file, data, filter_data_references)
         dx = docx.Document(temp_file.name)
@@ -147,6 +161,33 @@ def test_replace_hierarchical_fields_with_data():
                 ),
             )
             expecteds.append("Implemented by the following software requirements:")
+            if len(softreqs) == 0:
+                expecteds.append("None.")
+            else:
+                for softreq in softreqs:
+                    expecteds.extend(
+                        [
+                            "{internal_id}: {title}".format(**softreq),
+                            softreq["description"],
+                        ],
+                    )
+
+        for design_output in data["design-output"]:
+            design_output_id = design_output["internal_id"]
+            expecteds.extend(
+                [
+                    f"Pull request {design_output_id}: {design_output['title']}",
+                    design_output["description"],
+                ],
+            )
+            design_output_closings = design_output["closing_issues"]
+            softreqs = list(
+                filter(
+                    lambda soft: soft["internal_id"] in design_output_closings,
+                    data["requirement"],
+                ),
+            )
+            expecteds.append("Implement the following software requirements:")
             if len(softreqs) == 0:
                 expecteds.append("None.")
             else:
