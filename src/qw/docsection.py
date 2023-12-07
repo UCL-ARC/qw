@@ -23,44 +23,44 @@ def qname(ns: str, val: str) -> str:
     return QName(docx.oxml.ns.nsmap[ns], val)
 
 
-def nsw(val: str) -> str:
+def namespace_w(val: str) -> str:
     """Qualified name for "w:val"."""
     return qname("w", val)
 
 
 MERGEFIELD_RE = re.compile(r"\s*MERGEFIELD\s+(.*?)\s*")
-ATTRIB_ABSTRACTNUMID = nsw("abstractNumId")
-ATTRIB_NUMID = nsw("numId")
-ATTRIB_VAL = nsw("val")
-ATTRIB_ASCII = nsw("ascii")
-ATTRIB_HANSI = nsw("hAnsi")
+ATTRIB_ABSTRACTNUMID = namespace_w("abstractNumId")
+ATTRIB_NUMID = namespace_w("numId")
+ATTRIB_VAL = namespace_w("val")
+ATTRIB_ASCII = namespace_w("ascii")
+ATTRIB_HANSI = namespace_w("hAnsi")
 ATTRIB_SPACE = qname("xml", "space")
-TAG_R = nsw("r")
-TAG_RPR = nsw("rPr")
-TAG_B = nsw("b")
-TAG_I = nsw("i")
-TAG_RFONTS = nsw("rFonts")
-TAG_T = nsw("t")
-TAG_BR = nsw("br")
+TAG_R = namespace_w("r")
+TAG_RPR = namespace_w("rPr")
+TAG_B = namespace_w("b")
+TAG_I = namespace_w("i")
+TAG_RFONTS = namespace_w("rFonts")
+TAG_T = namespace_w("t")
+TAG_BR = namespace_w("br")
 TAG_R_ID = qname("r", "id")
-TAG_RSTYLE = nsw("rStyle")
-TAG_P = nsw("p")
-TAG_PPR = nsw("pPr")
-TAG_PSTYLE = nsw("pStyle")
-TAG_NUMPR = nsw("numPr")
-TAG_ILVL = nsw("ilvl")
-TAG_NUMID = nsw("numId")
-TAG_BIDI = nsw("bidi")
-TAG_JC = nsw("jc")
-TAG_HYPERLINK = nsw("hyperlink")
+TAG_RSTYLE = namespace_w("rStyle")
+TAG_P = namespace_w("p")
+TAG_PPR = namespace_w("pPr")
+TAG_PSTYLE = namespace_w("pStyle")
+TAG_NUMPR = namespace_w("numPr")
+TAG_ILVL = namespace_w("ilvl")
+TAG_NUMID = namespace_w("numId")
+TAG_BIDI = namespace_w("bidi")
+TAG_JC = namespace_w("jc")
+TAG_HYPERLINK = namespace_w("hyperlink")
 
 
-def is_fld_begin(run):
+def is_field_beginning(run):
     """Is this <w:r> run element the beginning of a field?."""
     return len(run.xpath('w:fldChar[@w:fldCharType="begin"]')) > 0
 
 
-def is_fld_separate(run):
+def is_field_separator(run):
     """
     Is this <w:r> run element a field separator?.
 
@@ -69,7 +69,7 @@ def is_fld_separate(run):
     return len(run.xpath('w:fldChar[@w:fldCharType="separate"]')) > 0
 
 
-def is_fld_end(run):
+def is_field_ending(run):
     """Is this <w:r> run element the end of a field?."""
     return len(run.xpath('w:fldChar[@w:fldCharType="end"]')) > 0
 
@@ -84,6 +84,11 @@ HEADING_STYLE_ID = [
 PREFORMATTED_FONT_NAME = "Courier"
 
 _DocSection: TypeAlias = "DocSection"
+
+# Paragraph level (in DocSection) for a list item
+_LIST_ITEM_BASE_LEVEL = 50
+# Paramgraph level (in DocSection) for a heading
+_HEADING_BASE_LEVEL = -50
 
 
 class DocSection:
@@ -156,15 +161,15 @@ class DocSection:
         or the number style, and refers to the indent level
         of a list item.
 
-        We return the indent level plus 50; list items are
-        deeper than body text (at level 0).
+        We return the indent level plus _LIST_ITEM_BASE_LEVEL;
+        list items are deeper than body text (at level 0).
         """
         bullets = element.xpath("w:pPr/w:numPr/w:ilvl")
         if len(bullets) != 0:
             val = bullets[0].attrib[ATTRIB_VAL]
             if val.isnumeric():
-                return int(val) + 50
-            return 50
+                return int(val) + _LIST_ITEM_BASE_LEVEL
+            return _LIST_ITEM_BASE_LEVEL
         return None
 
     def _get_paragraph_level(self, paragraph):
@@ -172,8 +177,8 @@ class DocSection:
         Get the outline level of the paragraph in `element`.
 
         `element` is the <w:p> element in the document. The outline
-        level of body text is 0. Headings are shallower, at -50 (for
-        Heading 1) counting up -49, -48 etcetera.
+        level of body text is 0. Headings are shallower, at
+        _HEADING_BASE_LEVEL (for Heading 1) counting up.
         """
         # Find the style outline level element
         styles = paragraph.xpath("w:pPr/w:pStyle")
@@ -188,7 +193,7 @@ class DocSection:
                 val = outlines[0].attrib[ATTRIB_VAL]
                 if val.isnumeric():
                     # We have found the heading level in the style
-                    return int(val) - 50
+                    return int(val) + _HEADING_BASE_LEVEL
             # If the style does not have an outline level, maybe
             # it has a number style with its own level.
             r = self._get_number_level(style.element)
@@ -341,14 +346,14 @@ class DocSection:
             return False
         is_in_field = False
         for run in paragraph.xpath("w:r"):
-            if is_fld_begin(run):
+            if is_field_beginning(run):
                 # We are in a field (which spans multiple <w:r>s)
                 is_in_field = True
             else:
                 if not is_in_field:
                     # We have found a <w:r> not in a field.
                     return False
-                if is_fld_end(run):
+                if is_field_ending(run):
                     is_in_field = False
         # There is no run that is not part of a field.
         return True
@@ -634,9 +639,9 @@ class DocSection:
         """
         # Find the start of the field
         r = instr_node.getparent()
-        self._delete_backwards_until(r.getprevious(), is_fld_begin)
+        self._delete_backwards_until(r.getprevious(), is_field_beginning)
         # Find the normal text node
-        r = self._delete_forwards_until(r, is_fld_separate)
+        r = self._delete_forwards_until(r, is_field_separator)
         if r is not None:
             # Remove everything from this run
             for t in r.xpath("w:t"):
@@ -644,7 +649,7 @@ class DocSection:
             # Add our new text to this run
             self._add_plain_text(r, plain_text)
             # And delete the rest of the field furniture
-            self._delete_forwards_until(r.getnext(), is_fld_end)
+            self._delete_forwards_until(r.getnext(), is_field_ending)
 
     def replace_field(self, name: str, plain_text: str) -> int:
         """
