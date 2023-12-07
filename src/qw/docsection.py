@@ -146,6 +146,9 @@ class DocSection:
         # The DocSection that created this DocSection with its
         # `deeper` method.
         self.parent = parent
+        # The paragraph after the current section and all of its
+        # duplicates, or None if it is the end of the document.
+        self.iteration_end = self.element[self.start_index]
 
     def first_paragraph_text(self) -> str | None:
         """Get the text in the first paragraph."""
@@ -205,12 +208,23 @@ class DocSection:
             return r
         return 0
 
-    def next_section(self):
+    def _depth(self):
+        if self.parent is None:
+            return 0
+        return 1 + self.parent._depth()
+
+    def at_iteration_end(self) -> bool:
+        """Determine if we are on the last iteration."""
+        if self.at_document_end():
+            return True
+        return self.iteration_end == self.element[self.end_index]
+
+    def next_section(self) -> bool:
         """
         Move to the next section in the document.
 
-        Returns True if there is a next section at this level, False
-        if not (and so we did not move on).
+        :return: True if we have advanced to the next section, or
+        False if we did not because we are at the end of this level.
         """
         if self.at_document_end():
             return False
@@ -235,20 +249,25 @@ class DocSection:
             # Have we reached the end of the section?
             if level <= self.start_level:
                 logger.debug(
-                    "Section {0} - {1} (hit level {2} <= {3})",
+                    "Section {0} - {1} (hit level {2} <= {3}). Depth {4}",
                     self.start_index,
                     self.end_index,
                     level,
                     self.start_level,
+                    self._depth(),
                 )
+                if self.iteration_end == self.element[self.start_index]:
+                    self.iteration_end = self.element[self.end_index]
                 return True
             self.end_index += 1
             p = p.getnext()
         logger.debug(
-            "Section {0} - {1} (end of document)",
+            "Section {0} - {1} (end of document). Depth {2}",
             self.start_index,
             self.end_index,
+            self._depth(),
         )
+        self.iteration_end = None
         return True
 
     def at_document_end(self):
@@ -305,7 +324,11 @@ class DocSection:
             # we are adding paragraphs before this section
             self.start_index += length
         elif start <= self.end_index:
-            # we are adding paragraphs to this section
+            logger.debug(
+                "Adding {} paragraphs to depth {}",
+                length,
+                self._depth(),
+            )
             self.end_index += length
         if self.parent is not None:
             self.parent._paragraph_count_changed(start, length)

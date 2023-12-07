@@ -1,11 +1,11 @@
 """Base class for design stages."""
-from abc import ABC, abstractmethod
+from abc import ABC
+from collections.abc import Callable
 from copy import copy
 from typing import Any, Self
 
 from qw.base import QwError
-from qw.design_stages.categories import RemoteItemType
-from qw.remote_repo.service import Issue
+from qw.design_stages.categories import DesignStage, RemoteItemType
 
 
 class DesignBase(ABC):
@@ -13,6 +13,10 @@ class DesignBase(ABC):
 
     # to be overriden by child classes for specific fields that are allowed to be empty.
     not_required_fields: frozenset[str] = frozenset()
+    base_fields: frozenset[str] = frozenset(
+        ["title", "description", "internal_id", "version"],
+    )
+    design_stage: DesignStage | None = None
 
     def __init__(self) -> None:
         """Shared fields for all design stage classes."""
@@ -20,7 +24,7 @@ class DesignBase(ABC):
         self.description: str | None = None
         self.internal_id: int | None = None
         self.remote_item_type: RemoteItemType | None = None
-        self.stage: DesignBase | None = None
+        self.stage: DesignStage | None = self.design_stage
         self.version = 1
 
     def __repr__(self):
@@ -65,6 +69,28 @@ class DesignBase(ABC):
 
         return instance
 
+    @classmethod
+    def is_dict_reference(
+        cls,
+        _self_dict: dict[str, Any],
+        _from_stage_name: str,
+    ) -> Callable[[dict[str, Any]], bool] | None:
+        """
+        Identify dicts from objects that reference this one.
+
+        Let s be an object of this Self type, and fset be a set of
+        objects of class F, a different subclass of DesignBase.
+        Then self_dict = s.to_dict(),
+        from_stage_name = F.design_stage.value.
+
+        This function returns a predicate p. For each element f of
+        fset, p(f.to_dict()) returns True if (and only if) f refers
+        to s.
+
+        Returns None instead of a function that always returns False.
+        """
+        return None
+
     def diff(self, other: Self) -> dict[str, dict[str, str]]:
         """
         Compare the data of each field with another instance,  returning the fields with differences only.
@@ -91,14 +117,3 @@ class DesignBase(ABC):
                 output_fields[field_name]["other"] = str(other_data)
 
         return output_fields
-
-    @classmethod
-    @abstractmethod
-    def from_issue(cls, issue: Issue) -> Self:
-        """
-        Create requirement from issue data.
-
-        :param issue: issue data from remote repository
-        :return: Design stsage instance
-        """
-        ...

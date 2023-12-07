@@ -25,7 +25,7 @@ If not, you may want to create a virtual environment for your python, one option
 For Unix:
 
 ```shell
-python -m venv env --prompt qw # create virtual environment directory called `venv`
+python -m venv venv --prompt qw # create virtual environment directory called `venv`
 source venv/bin/activate  # use the virtual environment
 pip install git+https://github.com/UCL-ARC/qw.git#egg=qw  # install qw
 echo "venv" >> .gitignore. # ensure git ignores the `venv` directory

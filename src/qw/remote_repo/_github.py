@@ -15,12 +15,16 @@ from requests import Response
 import qw.remote_repo.service
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
+from qw.md import text_under_heading
 
 
 class Issue(qw.remote_repo.service.Issue):
     """An issue on GitHub."""
 
-    def __init__(self, issue) -> None:
+    def __init__(
+        self,
+        issue,
+    ) -> None:
         """
         Initialize the issue.
 
@@ -46,14 +50,81 @@ class Issue(qw.remote_repo.service.Issue):
     @property
     def body(self) -> str:
         r"""Get the body of the first comment, always using `\n` as the newline character."""
+        if self._issue.body is None:
+            return ""
         return "\n".join(self._issue.body.splitlines())
 
     @property
     def item_type(self) -> RemoteItemType:
-        """Get the type of the issue, as we may handle a pull request differently to an issue."""
-        if self._issue.as_dict().get("pull_request"):
-            return RemoteItemType.REQUEST
+        """Get the type of the issue."""
         return RemoteItemType.ISSUE
+
+
+class PullRequest(qw.remote_repo.service.PullRequest):
+    """A pull request on GitHub."""
+
+    def __init__(
+        self,
+        body,
+        labels,
+        number,
+        title,
+        **kwargs,
+    ) -> None:
+        """
+        Initialize the pull request.
+
+        Use service.get_pull_request(number) instead.
+        """
+        try:
+            self._body = text_under_heading(body, "Description")
+        except QwError:
+            self._body = body
+        self._labels = labels
+        self._number = number
+        self._title = title
+        self._closing_issues = kwargs.get("closingIssuesReferences", [])
+
+    @property
+    def number(self) -> int:
+        """Get the number (human-readable ID)."""
+        return self._number
+
+    @property
+    def title(self) -> str:
+        """Get the title."""
+        return self._title.strip()
+
+    @property
+    def labels(self) -> list[str]:
+        """Get the label names for the issue."""
+        return [label["name"] for label in self._labels["nodes"]]
+
+    @property
+    def body(self) -> str:
+        r"""Get the body of the first comment, always using `\n` as the newline character."""
+        if self._body is None:
+            return ""
+        return "\n".join(self._body.splitlines())
+
+    @property
+    def item_type(self) -> RemoteItemType:
+        """Get the type of the issue."""
+        return RemoteItemType.REQUEST
+
+    @property
+    def closing_issues(self) -> list[int]:
+        """Get the list of ID numbers of closing issues for this PR."""
+        return [ci["number"] for ci in self._closing_issues["nodes"]]
+
+
+LOWEST_HTTP_OK = 200
+LOWEST_HTTP_NOT_OK = 300
+
+
+def status_is_ok(status_code: int) -> bool:
+    """Return whether the status code is OK."""
+    return status_code >= LOWEST_HTTP_OK and status_code < LOWEST_HTTP_NOT_OK
 
 
 class GitHubService(qw.remote_repo.service.GitService):
@@ -71,17 +142,114 @@ class GitHubService(qw.remote_repo.service.GitService):
     def _get_token(self):
         return keyring.get_password("qw", f"{self.username}/{self.reponame}")
 
-    def get_issue(self, number: int):
+    def _graph_ql(self, query):
+        """Execute a GraphQL query, returning the response."""
+        url = self.gh.session.build_url("graphql")
+        return self.gh.session.request(
+            "POST",
+            url,
+            json={
+                "query": query,
+            },
+        )
+
+    def get_issue(self, number: int) -> Issue:
         """Get the issue with the specified number."""
         issue = self.gh.issue(self.username, self.reponame, number)
         return Issue(issue)
+
+    def get_pull_request(self, number: int) -> PullRequest | None:
+        """Get the pull request with the specified number."""
+        response = self._graph_ql(
+            f"""query {{
+repository(owner: "{self.username}", name: "{self.reponame}") {{
+    pullRequest(number: {number}) {{
+        body
+        closed
+        closedAt
+        closingIssuesReferences(first: 100) {{
+            nodes {{
+                number
+            }}
+        }}
+        isDraft
+        labels(last: 100) {{
+            nodes {{
+                name
+            }}
+        }}
+        merged
+        number
+        title
+    }}
+}}
+}}""",
+        )
+        if not status_is_ok(response.status_code):
+            logger.info(
+                "Failed ({}) to get the closing numbers for issue {}",
+                response.status_code,
+                number,
+            )
+            return None
+        result = json.loads(response.content)
+        return PullRequest(**result["data"]["repository"]["pullRequest"])
 
     @property
     def issues(self):
         """Get all issues for the repository."""
         return [
-            Issue(issue) for issue in self.gh.issues_on(self.username, self.reponame)
+            Issue(issue)
+            for issue in self.gh.issues_on(
+                self.username,
+                self.reponame,
+            )
         ]
+
+    @property
+    def pull_requests(self) -> list[PullRequest]:
+        """Get all pull requests for the repository."""
+        response = self._graph_ql(
+            f"""query {{
+repository(owner: "{self.username}", name: "{self.reponame}") {{
+    pullRequests(last: 100) {{
+        totalCount
+        nodes {{
+            body
+            closed
+            closedAt
+            closingIssuesReferences(first: 100) {{
+                nodes {{
+                    number
+                }}
+            }}
+            isDraft
+            labels(last: 100) {{
+                nodes {{
+                    name
+                }}
+            }}
+            merged
+            number
+            title
+        }}
+    }}
+}}
+}}""",
+        )
+        if not status_is_ok(response.status_code):
+            logger.warning(
+                "Failed ({}) to get the pull requests",
+                response.status_code,
+            )
+            return []
+        result = json.loads(response.content)
+        nodes = result["data"]["repository"]["pullRequests"]
+        if len(nodes["nodes"]) < nodes["totalCount"]:
+            logger.warning(
+                "Too many pull requests! Please contact the developers.",
+            )
+        return [PullRequest(**pr) for pr in nodes["nodes"]]
 
     def check(self) -> bool:
         """Check that the credentials can connect to the service."""

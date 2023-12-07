@@ -7,15 +7,15 @@ import frontmatter
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
-from qw.remote_repo.service import GitService, Issue
+from qw.remote_repo.service import GitService, Issue, PullRequest
 
 
 class FileSystemIssue(Issue):
     """An issue on local filesystem."""
 
-    def __init__(self, filepath: Path) -> None:
+    def __init__(self, markdown_data) -> None:
         """Initialize the issue."""
-        self.markdown_data = frontmatter.load(filepath)
+        self.markdown_data = markdown_data
 
     @property
     def number(self) -> int:
@@ -49,6 +49,27 @@ class FileSystemIssue(Issue):
         raise QwError(msg)
 
 
+class FileSystemPullRequest(PullRequest, FileSystemIssue):
+    """Pull Request from the FileSystem test git service."""
+
+    @property
+    def item_type(self) -> RemoteItemType:
+        """Report that this is a request."""
+        return RemoteItemType.REQUEST
+
+
+def build_file_system_issue(filepath):
+    """Create the appropriate FileSystemIssue."""
+    markdown_data = frontmatter.load(filepath)
+    item_type = markdown_data["type"]
+    if item_type == "request":
+        return FileSystemPullRequest(markdown_data)
+    if item_type == "issue":
+        return FileSystemIssue(markdown_data)
+    msg = f"Unknown type in markdown: '{item_type}'"
+    raise QwError(msg)
+
+
 class FileSystemService(GitService):
     """The FileSystem Service."""
 
@@ -56,6 +77,8 @@ class FileSystemService(GitService):
         """Set up mocked service reading from local filesystem."""
         super().__init__({"user_name": "file", "repo_name": "system"})
         self.resource_path = root_dir / target_dir
+        mdx_files = sorted(self.resource_path.glob("*.mdx"))
+        self.issue_objects = [build_file_system_issue(file) for file in mdx_files]
 
     def get_issue(self, number: int):
         """Get the issue with the specified number."""
@@ -73,8 +96,18 @@ class FileSystemService(GitService):
     @property
     def issues(self):
         """Get all issues in the root path."""
-        mdx_files = sorted(self.resource_path.glob("*.mdx"))
-        return [FileSystemIssue(file) for file in mdx_files]
+        return filter(
+            lambda x: not isinstance(x, FileSystemPullRequest),
+            self.issue_objects,
+        )
+
+    @property
+    def pull_requests(self):
+        """Get all pull requests in the root path."""
+        return filter(
+            lambda x: isinstance(x, FileSystemPullRequest),
+            self.issue_objects,
+        )
 
     def check(self):
         """Check that the credentials can connect to the service."""
