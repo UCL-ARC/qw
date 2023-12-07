@@ -139,7 +139,7 @@ class LocalStore:
 
     def release_word_templates(self, out_dir=None):
         """
-        Iterates through qw_release_templates/*.docx files.
+        Iterate through qw_release_templates/*.docx files.
 
         Returns a pair (in_path, out_path) where in_path is the path
         of the template file and out_path is the path it should be
@@ -148,11 +148,11 @@ class LocalStore:
         if out_dir is None:
             out_dir = self.base_dir / "qw_release_out"
         top = self.base_dir / "qw_release_templates"
-        for (dirpath, _dirnames, filenames) in os.walk(top):
+        for dirpath, _dirnames, filenames in os.walk(top):
             out_path = out_dir / os.path.relpath(dirpath, top)
             for filename in filenames:
-                if os.path.splitext(filename)[1] == ".docx":
+                if Path(filename).suffix == ".docx":
                     yield (
-                        os.path.join(dirpath, filename),
-                        os.path.join(out_path, filename),
+                        Path(dirpath) / filename,
+                        Path(out_path) / filename,
                     )

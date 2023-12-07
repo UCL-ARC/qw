@@ -79,7 +79,7 @@ class PullRequest(qw.remote_repo.service.PullRequest):
         try:
             self._body = text_under_heading(body, "Description")
         except QwError:
-            self.body = body
+            self._body = body
         self._labels = labels
         self._number = number
         self._title = title
