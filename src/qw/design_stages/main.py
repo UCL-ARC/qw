@@ -83,6 +83,29 @@ class Requirement(DesignBase):
         instance.user_need = text_under_heading(issue.body, "Parent user need")
         return instance
 
+    @classmethod
+    def is_dict_reference(cls, self_dict, from_stage_name):
+        """
+        Identify dicts that refer to self_dict.
+
+        This could be a single Design Output or a single User Need.
+        """
+        if from_stage_name == DesignStage.NEED.value:
+            internal_id = self_dict.get("user_need", None)
+            if internal_id is None or internal_id[0] != "#":
+                return None
+            iid = internal_id[1:]
+            if not iid.isnumeric():
+                return None
+            iid = int(iid)
+            return lambda d: d.get("internal_id", None) == iid
+        if from_stage_name == DesignStage.OUTPUT.value:
+            internal_id = self_dict.get("internal_id", None)
+            if internal_id is None:
+                return None
+            return lambda d: internal_id in d.get("closing_issues", [])
+        return None
+
 
 class DesignOutput(DesignBase):
     """Output Design Stage."""

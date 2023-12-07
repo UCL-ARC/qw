@@ -134,6 +134,7 @@ class MergeData:
         # Iterations we are currently engaged in at this level.
         self.iterations: dict[str, int] = {}
         self.filter_referencers = filter_referencers
+        self.iteration_advance: set[str] = set()
 
     def get_data(self, field_name: str) -> tuple[str | None, bool]:
         """
@@ -174,6 +175,7 @@ class MergeData:
                 obj,
             )
             return (obj.get(prop, None), True)
+        self.iteration_advance.add(k)
         if k not in self.iterations:
             logger.debug("beginning iteration for {0}", k)
             self._set_deeper(k, 0)
@@ -193,7 +195,6 @@ class MergeData:
         this current iteraction.
         """
         self.iterations[key] = i
-        logger.debug("iteration for {0} is now {1}", key, i)
         objs = self.data[key]
         if objs is None or len(objs) <= i:
             logger.debug("no more objects")
@@ -203,13 +204,14 @@ class MergeData:
             logger.debug("not a real object")
             return
         # Find out which other values in self.data
-        # are refer to obj
+        # refer to obj
         for d_key, d_objs in self.data.items():
             if isinstance(d_objs, list) and len(d_objs) != 0:
-                # do the d_objs refer back to `key`?
-                backrefs = self.filter_referencers(d_key, d_objs, key, obj)
-                if backrefs is not None:
-                    self.deeper[d_key] = list(backrefs)
+                # do the d_objs refer to `key`?
+                refs = self.filter_referencers(d_key, d_objs, key, obj)
+                if refs is not None:
+                    logger.debug("Filtered {} by reference to {}", d_key, obj)
+                    self.deeper[d_key] = list(refs)
 
     def deeper_data(self) -> _MergeData:
         """
@@ -220,11 +222,17 @@ class MergeData:
         the iterated objects and narrow them to the iterations'
         current positions.
         """
-        logger.debug("iteration state: {0}", self.iterations)
-        for k, i in self.iterations.items():
-            objs = self.data[k]
-            self.deeper[k] = objs[i] if i < len(objs) else None
+        logger.debug("deeper: iteration state: {0}", self.iterations)
+        for k, objs in self.data.items():
+            i = self.iterations.get(k, None)
+            if i is not None:
+                self.deeper[k] = objs[i] if i < len(objs) else None
         return MergeData(self.deeper, self.filter_referencers)
+
+    def reset_iterations(self):
+        """Reset the iterations for all the data."""
+        for k in self.iterations:
+            self._set_deeper(k, 0)
 
     def next_section(self):
         """
@@ -235,8 +243,11 @@ class MergeData:
         clear what we should actually do, but let's just stick
         with this.
         """
+        logger.debug("next: iteration state: {0}", self.iterations)
         for k, i in self.iterations.items():
-            self._set_deeper(k, i + 1)
+            increment = 1 if k in self.iteration_advance else 0
+            self._set_deeper(k, i + increment)
+        self.iteration_advance.clear()
 
 
 class Document:
@@ -256,20 +267,26 @@ class Document:
         """
         logger.debug("Starting section")
         while section.next_section():
+            logger.debug(f"section {section.start_index}-{section.end_index}")
             fs = section.fields()
             if len(fs) == 1 and section.paragraph_is_only_field():
-                # Replace the entire first paragraph
-                field_name = fs.pop()
-                self._replace_section_head(section, data, field_name)
+                # Replace the entire section
+                for field_name in fs:
+                    # there is only one of these (so only one iteration)
+                    self._replace_section_head(section, data, field_name)
             else:
                 # Just replace the fields with plain text
                 self._replace_fields_in_section_head(section, data, fs)
-            # Now deal with the deeper sections under the (possibly
-            # replaced) first paragraph
-            deeper = section.deeper()
-            if deeper:
-                self._interpolate_sections(deeper, data.deeper_data())
-            data.next_section()
+                # Now deal with the deeper sections under the (possibly
+                # replaced) first paragraph
+                deeper = section.deeper()
+                if deeper:
+                    self._interpolate_sections(deeper, data.deeper_data())
+            if section.at_iteration_end():
+                logger.debug(f"Resetting iterations, depth: {section._depth()}")
+                data.reset_iterations()
+            else:
+                data.next_section()
         logger.debug("Finished section")
 
     def _replace_section_head(
@@ -312,7 +329,10 @@ class Document:
         data -- the data to pull from.
         fs -- set of field names to replace.
         """
+        if len(fs) == 0:
+            return
         duplicated = False
+        replaced_any = False
         for field_name in fs:
             (replacement_md, final) = data.get_data(field_name)
             if not duplicated and not final:
@@ -321,18 +341,18 @@ class Document:
                 section.duplicate()
                 duplicated = True
             if replacement_md is None:
-                # One of our fields is exhausted, so we'll replace the
-                # entire section. This is probably not very sensible,
-                # but it will do for now.
-                section.remove_nonfirst_paragraphs()
-                replacer = DocSectionParagraphReplacer(section)
-                replacer.render_markdown(NONE_PARAGRAPH)
-                return
+                replacement_md = NONE_PARAGRAPH
+            else:
+                replaced_any = True
             if isinstance(replacement_md, str):
                 replacement = markdown_to_plain_text(replacement_md)
             else:
                 replacement = str(replacement_md)
             section.replace_field(field_name, replacement)
+        if not replaced_any:
+            section.remove_nonfirst_paragraphs()
+            replacer = DocSectionParagraphReplacer(section)
+            replacer.render_markdown(NONE_PARAGRAPH)
 
     def write(
         self,

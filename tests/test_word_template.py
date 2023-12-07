@@ -83,65 +83,68 @@ def test_replace_fields_with_data():
             assert p.text == expected
 
 
+REQ_NEED_OUTPUT_DATA = {
+    "requirement": [
+        {
+            "internal_id": 1,
+            "title": "Display dose",
+            "description": "Put the dose on the screen.",
+            "user_need": "#101",
+        },
+        {
+            "internal_id": 2,
+            "title": "Update dose",
+            "description": "The dose on screen is updated as the controls are adjusted.",
+            "user_need": "#101",
+        },
+        {
+            "internal_id": 3,
+            "title": "Stop plunger",
+            "description": "Stop the plunger as the required dose is met",
+            "user_need": "#102",
+        },
+    ],
+    "user-need": [
+        {
+            "internal_id": 101,
+            "title": "Show the dose",
+            "description": "The user needs to be able to read out the dose on a screen.",
+        },
+        {
+            "internal_id": 102,
+            "title": "Deliver the dose",
+            "description": "The patient needs to receive the expected dose.",
+        },
+        {
+            "internal_id": 103,
+            "title": "Have a party",
+            "description": "The developers need a break.",
+        },
+    ],
+    "design-output": [
+        {
+            "internal_id": 24,
+            "title": "Screen rendering",
+            "description": "Dose rendered on the screen.",
+            "closing_issues": [1, 2],
+        },
+        {
+            "internal_id": 25,
+            "title": "Plunger control",
+            "description": "Drive plunger according to configuration.",
+            "closing_issues": [3],
+        },
+    ],
+}
+
+
 def test_replace_hierarchical_fields_with_data():
     """Test replacing hierarchical fields through MergeData."""
     doc = load_template(
         "tests/resources/msword/DocSection_two_level_fields.docx",
     )
     with NamedTemporaryFile("w+b") as temp_file:
-        data = {
-            "requirement": [
-                {
-                    "internal_id": 1,
-                    "title": "Display dose",
-                    "description": "Put the dose on the screen.",
-                    "user_need": "#101",
-                },
-                {
-                    "internal_id": 2,
-                    "title": "Update dose",
-                    "description": "The dose on screen is updated as the controls are adjusted.",
-                    "user_need": "#101",
-                },
-                {
-                    "internal_id": 3,
-                    "title": "Stop plunger",
-                    "description": "Stop the plunger as the required dose is met",
-                    "user_need": "#102",
-                },
-            ],
-            "user-need": [
-                {
-                    "internal_id": 101,
-                    "title": "Show the dose",
-                    "description": "The user needs to be able to read out the dose on a screen.",
-                },
-                {
-                    "internal_id": 102,
-                    "title": "Deliver the dose",
-                    "description": "The patient needs to receive the expected dose.",
-                },
-                {
-                    "internal_id": 103,
-                    "title": "Have a party",
-                    "description": "The developers need a break.",
-                },
-            ],
-            "design-output": [
-                {
-                    "internal_id": 24,
-                    "title": "Screen rendering",
-                    "description": "Dose rendered on the screen.",
-                    "closing_issues": [1, 2],
-                },
-                {
-                    "internal_id": 25,
-                    "title": "Plunger control",
-                    "description": "Drive plunger according to configuration.",
-                    "closing_issues": [3],
-                },
-            ],
-        }
+        data = REQ_NEED_OUTPUT_DATA
         doc.write(temp_file, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         expecteds = []
@@ -198,6 +201,100 @@ def test_replace_hierarchical_fields_with_data():
                             softreq["description"],
                         ],
                     )
+
+        expecteds.extend(
+            [
+                "Afterword",
+                "Some text here.",
+                "",
+            ],
+        )
+        for p, expected in zip(dx.paragraphs, expecteds, strict=True):
+            assert p.text == expected
+
+
+def test_replace_hierarchical_fields_with_data_2():
+    """Test replacing hierarchical fields through MergeData."""
+    doc = load_template(
+        "tests/resources/msword/DocSection_two_level_fields_2.docx",
+    )
+    with NamedTemporaryFile("w+b") as temp_file:
+        data = REQ_NEED_OUTPUT_DATA
+        doc.write(temp_file, data, filter_data_references)
+        dx = docx.Document(temp_file.name)
+        expecteds = []
+        for sysreq in data["user-need"]:
+            sysr_id = sysreq["internal_id"]
+            expecteds.extend(
+                [
+                    f"System requirement {sysr_id}",
+                    sysreq["title"],
+                    sysreq["description"],
+                ],
+            )
+            softreqs = list(
+                filter(
+                    lambda soft: soft["user_need"] == f"#{sysr_id}",
+                    data["requirement"],
+                ),
+            )
+            expecteds.append("Implemented by the following software requirements:")
+            if len(softreqs) == 0:
+                expecteds.append("None.")
+            else:
+                for softreq in softreqs:
+                    expecteds.extend(
+                        [
+                            "{internal_id}: {title}".format(**softreq),
+                            softreq["description"],
+                        ],
+                    )
+                    for pr in filter(
+                        lambda d: softreq["internal_id"] in d["closing_issues"],
+                        data["design-output"],
+                    ):
+                        expecteds.append(
+                            "Implemented with Pull Request {} ({}).".format(
+                                pr["internal_id"],
+                                pr["title"],
+                            ),
+                        )
+
+        for design_output in data["design-output"]:
+            design_output_id = design_output["internal_id"]
+            expecteds.extend(
+                [
+                    f"Pull request {design_output_id}: {design_output['title']}",
+                    design_output["description"],
+                ],
+            )
+            design_output_closings = design_output["closing_issues"]
+            softreqs = list(
+                filter(
+                    lambda soft: soft["internal_id"] in design_output_closings,
+                    data["requirement"],
+                ),
+            )
+            expecteds.append("Implement the following software requirements:")
+            if len(softreqs) == 0:
+                expecteds.append("None.")
+            else:
+                for softreq in softreqs:
+                    expecteds.append(
+                        "{internal_id} ({title}) with user needs:".format(**softreq),
+                    )
+                    uns = list(
+                        filter(
+                            lambda un: softreq["user_need"][1:]
+                            == str(un["internal_id"]),
+                            data["user-need"],
+                        ),
+                    )
+                    if len(uns) == 0:
+                        expecteds.append("None.")
+                    else:
+                        for un in uns:
+                            expecteds.append("{}".format(un["internal_id"]))
 
         expecteds.extend(
             [
