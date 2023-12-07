@@ -17,6 +17,7 @@ from qw.base import QwError
 from qw.changes import ChangeHandler
 from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
+from qw.mergedoc import load_template
 from qw.remote_repo.factory import get_service
 from qw.remote_repo.service import (
     Service,
@@ -37,7 +38,7 @@ class LogLevel(str, Enum):
     DEBUG = "debug"
 
 
-LOGELEVEL_TO_LOGURU = {
+LOGLEVEL_TO_LOGURU = {
     LogLevel.DEBUG: 10,
     LogLevel.INFO: 20,
     LogLevel.WARNING: 30,
@@ -71,7 +72,7 @@ def main(
     """
     logger.remove()
     if loglevel is not None:
-        logger.add(sys.stderr, level=LOGELEVEL_TO_LOGURU[loglevel])
+        logger.add(sys.stderr, level=LOGLEVEL_TO_LOGURU[loglevel])
 
 
 @app.command()
@@ -212,6 +213,92 @@ def configure(
     service.update_remote(force=force)
     typer.echo(
         "Updated remote repository with rules",
+    )
+
+
+@app.command()
+def release():
+    """Produce documentation by merging frozen values into templates."""
+    doc = load_template("tests/resources/msword/test_template.docx")
+    doc.write(
+        output_file="out.docx",
+        data={
+            "soup": [
+                {
+                    "id": "34",
+                    "name": "Python",
+                    "description": "The **Python** programming language",
+                },
+                {
+                    "id": "75",
+                    "name": "python-docx",
+                    "description": (
+                        "The *Python* module `python-docx`.\n"
+                        "* provides access to MS Word Documents\n"
+                        "* Isn't very good"
+                    ),
+                },
+            ],
+            "software-requirement": [
+                {
+                    "id": "101",
+                    "name": "Dose input",
+                    "description": "Allow the user to input the *dose*.",
+                    "system-requirement": "31",
+                },
+                {
+                    "id": "102",
+                    "name": "Dose measurement",
+                    "description": ("The *hardware* must measure the dose given."),
+                    "system-requirement": "32",
+                },
+                {
+                    "id": "103",
+                    "name": "Dose articulation",
+                    "description": (
+                        "The *hardware* must stop delivering the"
+                        " medicine when dose given meets the dose"
+                        " required."
+                    ),
+                    "system-requirement": "32",
+                },
+                {
+                    "id": "104",
+                    "name": "Lock screen",
+                    "description": (
+                        "The [screen](https://dictionary.cambridge.org"
+                        "/dictionary/english/screen) should show"
+                        " `locked` when the _lock_ button is pressed"
+                    ),
+                    "system-requirement": "33",
+                },
+            ],
+            "system-requirement": [
+                {
+                    "id": "31",
+                    "name": "Dose input",
+                    "description": "User must be able to input the dose",
+                },
+                {
+                    "id": "32",
+                    "name": "Dose correct",
+                    "description": "Dose must match the input dose",
+                },
+                {
+                    "id": "33",
+                    "name": "Lockable",
+                    "description": (
+                        "Device should be easily lockable and only"
+                        " unlockable by the registered user."
+                    ),
+                },
+                {
+                    "id": "34",
+                    "name": "Something else",
+                    "description": "Are we having **fun** yet?",
+                },
+            ],
+        },
     )
 
 
