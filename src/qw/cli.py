@@ -16,10 +16,12 @@ from rich.prompt import Prompt
 
 from qw.base import QwError
 from qw.changes import ChangeHandler
+from qw.design_stages.checks import run_checks
 from qw.design_stages.main import (
     DESIGN_STAGE_CLASSES,
     get_design_stage_class_from_name,
     get_local_stages,
+    get_remote_stages,
 )
 from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
@@ -165,13 +167,16 @@ def check(
     ] = None,
 ) -> None:
     """Check issue or pull request for any QW problems."""
+    kwargs = {}
     if token and repository:
         logger.info("Using CI access token for authorisation")
+        service = _build_and_check_service()
+        stages = get_remote_stages(service)
     else:
         logger.info(
             "Using local qw config for authorisation because '--token' and '--repository' were not used",
         )
-        _build_and_check_service()
+        stages = get_local_stages(store)
     # currently dummy function as doesn't need real functionality for configuration
     if issue and review_request:
         QwError(
@@ -179,9 +184,28 @@ def check(
         )
     if not (issue or review_request):
         QwError("Nothing given to check, please add a issue or review_request to check")
-    logger.success(
-        "Checks complete, stdout will contain a checklist of any problems found",
-    )
+    if issue is not None:
+        kwargs['issues'] = set([issue])
+    if review_request is not None:
+        kwargs['prs'] = set([review_request])
+    result = run_checks(stages, **kwargs)
+    if result.failures:
+        logger.error(
+            "Ran {} check(s) over {} object(s)",
+            result.check_count,
+            result.object_count,
+        )
+        logger.error("Some checks failed:")
+        for failure in result.failures:
+            logger.error(failure)
+        return 1
+    else:
+        logger.success(
+            "OK: Ran {} check(s) over {} object(s), all successful",
+            result.check_count,
+            result.object_count,
+        )
+        return 0
 
 
 @app.command()

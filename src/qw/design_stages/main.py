@@ -5,10 +5,12 @@ from loguru import logger
 
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
+
 from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
 from qw.remote_repo.service import Issue, PullRequest, Service
+from qw.design_stages.checks import check
 
 
 class UserNeed(DesignBase):
@@ -16,6 +18,7 @@ class UserNeed(DesignBase):
 
     not_required_fields = frozenset(["requirement"])
     design_stage = DesignStage.NEED
+    plural = "user_needs"
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
@@ -60,6 +63,7 @@ class Requirement(DesignBase):
 
     not_required_fields = frozenset(["user_need"])
     design_stage = DesignStage.REQUIREMENT
+    plural = "requirements"
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
@@ -106,11 +110,43 @@ class Requirement(DesignBase):
             return lambda d: internal_id in d.get("closing_issues", [])
         return None
 
+    @check(
+        "User need links have qw-user-need label",
+        "Requirement {0.internal_id} ({0.title}) has bad user need:",
+        fail_item="{} is not labelled with qw-user-need",
+    )
+    def user_need_is_labelled_as_such(self, user_needs, **kwargs) -> list[str]:
+        """
+        Design Outputs (PRs) have closing issues, and all these must refer
+        to issues with the qw-requirement label (or qw-ignore).
+        """
+        if isinstance(self.user_need, str) and self.user_need.startswith("#"):
+            un = self.user_need[1:]
+            if un.isnumeric() and int(un) not in user_needs:
+                return [self.user_need]
+        return []
+
+    @check(
+        "User Need links must exist",
+        "Requirement {0.internal_id} ({0.title}) has no user need:",
+    )
+    def user_need_is_labelled_as_such(self, user_needs, **kwargs) -> list[str]:
+        """
+        Design Outputs (PRs) have closing issues, and all these must refer
+        to issues with the qw-requirement label (or qw-ignore).
+        """
+        if (isinstance(self.user_need, str)
+            and self.user_need.startswith("#")
+            and self.user_need[1:].isnumeric()
+        ):
+            return False
+        return True
 
 class DesignOutput(DesignBase):
     """Output Design Stage."""
 
     design_stage = DesignStage.OUTPUT
+    plural = "design_outputs"
 
     def __init__(self) -> None:
         """
@@ -148,6 +184,21 @@ class DesignOutput(DesignBase):
         logger.debug("Requirements are: {}", requirements)
         return lambda d: d.get("internal_id", None) in requirements
 
+    @check(
+        "Closing Issues are Requirements",
+        "Design Output {0.internal_id} ({0.title}) has bad closing issues:",
+        fail_item="{} is not a requirement",
+    )
+    def closing_issues_are_requirements(self, requirements, **kwargs):
+        """
+        Design Outputs (PRs) have closing issues, and all these must refer
+        to issues with the qw-requirement label (or qw-ignore).
+        """
+        failed: list[int] = []
+        for req in self.closing_issues:
+            if req not in requirements:
+                failed.append(req)
+        return failed
 
 DESIGN_STAGE_CLASSES = DesignBase.__subclasses__()
 _DESIGN_STAGE_CLASS_FROM_NAME = {
@@ -162,7 +213,7 @@ def get_design_stage_class_from_name(name: str) -> type[DesignBase] | None:
     return None
 
 
-DesignStages = list[UserNeed | Requirement]
+DesignStages = list[UserNeed | Requirement | DesignOutput]
 
 
 def get_local_stages(local_store: LocalStore) -> DesignStages:
