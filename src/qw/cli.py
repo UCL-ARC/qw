@@ -185,9 +185,9 @@ def check(
     if not (issue or review_request):
         QwError("Nothing given to check, please add a issue or review_request to check")
     if issue is not None:
-        kwargs['issues'] = set([issue])
+        kwargs["issues"] = {issue}
     if review_request is not None:
-        kwargs['prs'] = set([review_request])
+        kwargs["prs"] = {review_request}
     result = run_checks(stages, **kwargs)
     if result.failures:
         logger.error(
@@ -198,14 +198,13 @@ def check(
         logger.error("Some checks failed:")
         for failure in result.failures:
             logger.error(failure)
-        return 1
+        typer.Exit(code=1)
     else:
         logger.success(
             "OK: Ran {} check(s) over {} object(s), all successful",
             result.check_count,
             result.object_count,
         )
-        return 0
 
 
 @app.command()
@@ -237,14 +236,27 @@ def login(
 
 
 @app.command()
-def freeze():
+def freeze(
+    dry_run: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--dry-run",
+            "-n",
+            help="Report differences but do not store the results.",
+        ),
+    ] = False,
+):
     """Freeze the state of remote design stages and update local store."""
     conf = store.read_configuration()
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)
-    to_save = change_handler.combine_local_and_remote_items()
-    store.write_local_data([x.to_dict() for x in to_save])
-    logger.info("Finished freeze")
+    diff_elements = change_handler.diff_remote_and_local_items()
+    if dry_run:
+        to_save = change_handler.get_local_items_from_diffs(diff_elements)
+        store.write_local_data([x.to_dict() for x in to_save])
+        logger.info("Finished freeze")
+    else:
+        logger.info("Finished freeze (dry run)")
 
 
 @app.command()

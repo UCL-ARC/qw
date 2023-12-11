@@ -1,9 +1,17 @@
-from typing import Iterable, Type
+"""
+Checks on Design Stage objects.
+
+These checks are run when the user calls `qw check`, in particular
+when a PR is checked.
+"""
+
+from collections.abc import Iterable
 
 from loguru import logger
 
 from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import RemoteItemType
+
 
 class _Check:
     def __init__(
@@ -12,10 +20,10 @@ class _Check:
         **kwargs,
     ) -> None:
         self.func = func
-        self.title = kwargs.get('title', func.__name__)
-        self.description = kwargs.get('description', func.__doc__)
-        self.fail_title = kwargs.get('fail_title', func.__name__)
-        self.fail_item = kwargs.get('fail_item', None)
+        self.title = kwargs.get("title", func.__name__)
+        self.description = kwargs.get("description", func.__doc__)
+        self.fail_title = kwargs.get("fail_title", func.__name__)
+        self.fail_item = kwargs.get("fail_item", None)
 
     def apply_to(self, obj: DesignBase, **kwargs) -> list[str]:
         """
@@ -42,29 +50,31 @@ class _Check:
         return out
 
 
-_CHECKS: dict[str, _Check] = {}
+_CHECKS: dict[str, list[_Check]] = {}
 
 
 class CheckResult:
-    """
-    Results from checking.
-    
-    Has the following public properties:
-    :prop failures: human-readable failure list
-    :prop object_count: the number of objects tested
-    :prop check_count: the total number of checks run on all objects
-    """
+    """Results from checking."""
+
     def __init__(self, failures, object_count, check_count):
+        """
+        Initialize.
+
+        Has the following public properties:
+        :prop failures: human-readable failure list
+        :prop object_count: the number of objects tested
+        :prop check_count: the total number of checks run on all objects
+        """
         self.failures = failures
         self.object_count = object_count
         self.check_count = check_count
 
 
 def run_checks(
-    stages: list[Type[DesignBase]],
-    issues: set[int] | None=None,
-    prs: set[int] | None=None,
-    **kwargs,
+    stages: list[type[DesignBase]],
+    issues: set[int] | None = None,
+    prs: set[int] | None = None,
+    **_kwargs,
 ) -> CheckResult:
     """
     Run checks against design stages.
@@ -73,12 +83,12 @@ def run_checks(
     :prs: Set of PR numbers to check.
     :return: List of error strings. Will be empty if no errors.
     """
-    class_dict_args: dict[str, dict[int, Type[DesignBase]]] = {}
+    class_dict_args: dict[str, dict[int, type[DesignBase]]] = {}
     for stage_class in DesignBase.__subclasses__():
         class_dict_args[stage_class.plural] = {}
     # Create the arguments the checks might use
     for stage in stages:
-        d = class_dict_args[stage.plural][stage.internal_id] = stage
+        class_dict_args[stage.plural][stage.internal_id] = stage
     # Find the stages we actually want to test
     wanted: list[DesignBase] = []
     if prs is None and issues is None:
@@ -93,9 +103,8 @@ def run_checks(
             if stage.remote_item_type == RemoteItemType.REQUEST:
                 if stage.internal_id in prs:
                     wanted.append(stage)
-            else:
-                if stage.internal_id in issues:
-                    wanted.append(stage)
+            elif stage.internal_id in issues:
+                wanted.append(stage)
     # Run the checks
     count = 0
     result: list[str] = []
@@ -110,7 +119,7 @@ def run_checks(
 
 def check(title: str, fail_title: str, **kwargs):
     """
-    Decorate f so that it is a check to be run with `qw check`
+    Decorate f so that it is a check to be run with `qw check`.
 
     The function should return a Falsey value if the check passes, or
     a Truthy value if the check fails.
@@ -142,15 +151,19 @@ def check(title: str, fail_title: str, **kwargs):
     :param description: Human-readable description of the check; if not
     provided, the functions docstring will be used.
     """
+
     def decorator(f):
-        class_name = f.__qualname__.split('.')[0]
+        class_name = f.__qualname__.split(".")[0]
         if class_name not in _CHECKS:
             _CHECKS[class_name] = []
-        _CHECKS[class_name].append(_Check(
-            f,
-            title=title,
-            fail_title=fail_title,
-            **kwargs,
-        ))
+        _CHECKS[class_name].append(
+            _Check(
+                f,
+                title=title,
+                fail_title=fail_title,
+                **kwargs,
+            ),
+        )
         return f
+
     return decorator

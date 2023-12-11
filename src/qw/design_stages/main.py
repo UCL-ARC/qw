@@ -5,12 +5,11 @@ from loguru import logger
 
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
-
 from qw.design_stages.categories import DesignStage, RemoteItemType
+from qw.design_stages.checks import check
 from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
 from qw.remote_repo.service import Issue, PullRequest, Service
-from qw.design_stages.checks import check
 
 
 class UserNeed(DesignBase):
@@ -115,8 +114,10 @@ class Requirement(DesignBase):
         "Requirement {0.internal_id} ({0.title}) has bad user need:",
         fail_item="{} is not labelled with qw-user-need",
     )
-    def user_need_is_labelled_as_such(self, user_needs, **kwargs) -> list[str]:
+    def user_need_is_labelled_as_such(self, user_needs, **_kwargs) -> list[str]:
         """
+        Test if the linked User Needs are actually labelled as qw-user-need.
+
         Design Outputs (PRs) have closing issues, and all these must refer
         to issues with the qw-requirement label (or qw-ignore).
         """
@@ -130,17 +131,16 @@ class Requirement(DesignBase):
         "User Need links must exist",
         "Requirement {0.internal_id} ({0.title}) has no user need:",
     )
-    def user_need_is_labelled_as_such(self, user_needs, **kwargs) -> list[str]:
-        """
-        Design Outputs (PRs) have closing issues, and all these must refer
-        to issues with the qw-requirement label (or qw-ignore).
-        """
-        if (isinstance(self.user_need, str)
+    def user_need_must_exit(self, **_kwargs) -> bool:
+        """Test if the User Needs are actually links to Github issues."""
+        if (
+            isinstance(self.user_need, str)
             and self.user_need.startswith("#")
             and self.user_need[1:].isnumeric()
         ):
             return False
         return True
+
 
 class DesignOutput(DesignBase):
     """Output Design Stage."""
@@ -189,8 +189,14 @@ class DesignOutput(DesignBase):
         "Design Output {0.internal_id} ({0.title}) has bad closing issues:",
         fail_item="{} is not a requirement",
     )
-    def closing_issues_are_requirements(self, requirements, **kwargs):
+    def closing_issues_are_requirements(
+        self,
+        requirements: dict[int, Requirement],
+        **_kwargs,
+    ) -> list[int]:
         """
+        Test that closing issues are all Requirements.
+
         Design Outputs (PRs) have closing issues, and all these must refer
         to issues with the qw-requirement label (or qw-ignore).
         """
@@ -199,6 +205,7 @@ class DesignOutput(DesignBase):
             if req not in requirements:
                 failed.append(req)
         return failed
+
 
 DESIGN_STAGE_CLASSES = DesignBase.__subclasses__()
 _DESIGN_STAGE_CLASS_FROM_NAME = {
