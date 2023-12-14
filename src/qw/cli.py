@@ -163,7 +163,7 @@ def check(
     repository: Annotated[
         Optional[str],
         typer.Option(
-            help="Repository in form '${organisation}/${repository}'",
+            help="Repository URL (like https://github.com/me/repo or github.com:me/repo)",
         ),
     ] = None,
     remote: Annotated[
