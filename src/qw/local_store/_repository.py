@@ -1,6 +1,7 @@
 """Configuration for local repository."""
 
 import csv
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from pathlib import Path
 
@@ -10,7 +11,43 @@ from loguru import logger
 from qw.base import QwError
 
 
-class RequirementComponents:
+class RequirementComponents(ABC):
+    """Handle customising components for requirements."""
+
+    @abstractmethod
+    def write_initial_data_if_not_exists(self):
+        """Write initial data to file path if it doesn't exist already."""
+
+    @abstractmethod
+    def update_requirements_template(
+        self,
+        template_source: Path,
+        template_target: Path,
+    ):
+        """Update the requirements with the current component data."""
+
+
+class FailingRequirementComponents(RequirementComponents):
+    """Fail if anyone tries to read or write components."""
+
+    def __init__(self, error_message):
+        """Set the failure message."""
+        self.error_message = error_message
+
+    def write_initial_data_if_not_exists(self):
+        """Fail."""
+        raise QwError(self.error_message)
+
+    def update_requirements_template(
+        self,
+        _template_source: Path,
+        _template_target: Path,
+    ):
+        """Fail."""
+        raise QwError(self.error_message)
+
+
+class QwDirRequirementComponents(RequirementComponents):
     """Handle customising components for requirements."""
 
     def __init__(self, qw_dir: Path):

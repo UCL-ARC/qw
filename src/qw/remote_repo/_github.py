@@ -140,6 +140,9 @@ class GitHubService(qw.remote_repo.service.GitService):
         self.gh = github3.login(token=token)
 
     def _get_token(self):
+        token = self.conf.get("token", None)
+        if token is not None:
+            return token
         return keyring.get_password("qw", f"{self.username}/{self.reponame}")
 
     def _graph_ql(self, query):

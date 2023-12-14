@@ -56,8 +56,9 @@ LOGLEVEL_TO_LOGURU = {
 store = LocalStore()
 
 
-def _build_and_check_service():
-    conf = store.read_configuration()
+def _build_and_check_service(conf: dict | None = None):
+    if conf is None:
+        conf = store.read_configuration()
     service = get_service(conf)
     service.check()
     typer.echo("Can connect to the remote repository 🎉")
@@ -156,7 +157,7 @@ def check(
     token: Annotated[
         Optional[str],
         typer.Option(
-            help="CI access token to use for checking, otherwise will use local config",
+            help="CI access token to use for checking.",
         ),
     ] = None,
     repository: Annotated[
@@ -165,17 +166,33 @@ def check(
             help="Repository in form '${organisation}/${repository}'",
         ),
     ] = None,
+    remote: Annotated[
+        bool,
+        typer.Option(
+            help="Use remote repository rather than local store (implied by --repository)",
+        ),
+    ] = False,
 ) -> None:
     """Check issue or pull request for any QW problems."""
     kwargs = {}
     if token and repository:
         logger.info("Using CI access token for authorisation")
+        (host, username, reponame) = remote_address_to_host_user_repo(repository)
+        servicename = hostname_to_service(host)
+        service = _build_and_check_service(
+            {
+                "user_name": username,
+                "repo_name": reponame,
+                "service": servicename,
+                "token": token,
+            },
+        )
+        stages = get_remote_stages(service)
+    elif remote:
         service = _build_and_check_service()
         stages = get_remote_stages(service)
     else:
-        logger.info(
-            "Using local qw config for authorisation because '--token' and '--repository' were not used",
-        )
+        logger.info("Using local qw config for authorisation.")
         stages = get_local_stages(store)
     # currently dummy function as doesn't need real functionality for configuration
     if issue and review_request:
@@ -252,11 +269,11 @@ def freeze(
     change_handler = ChangeHandler(service, store)
     diff_elements = change_handler.diff_remote_and_local_items()
     if dry_run:
+        logger.info("Finished freeze (dry run)")
+    else:
         to_save = change_handler.get_local_items_from_diffs(diff_elements)
         store.write_local_data([x.to_dict() for x in to_save])
         logger.info("Finished freeze")
-    else:
-        logger.info("Finished freeze (dry run)")
 
 
 @app.command()
@@ -361,10 +378,15 @@ def _get_merge_data() -> dict[str, list[dict[str, Any]]]:
     return data
 
 
-if __name__ == "__main__":
+def run_app():
+    """Run the app, reporting errors nicely."""
     try:
         app()
         sys.exit(0)
     except QwError as e:
         sys.stderr.write(str(e) + "\n")
         sys.exit(2)
+
+
+if __name__ == "__main__":
+    run_app()

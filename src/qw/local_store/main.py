@@ -8,7 +8,10 @@ from loguru import logger
 
 from qw.base import QwError
 from qw.local_store._json import _dump_json, _load_json
-from qw.local_store._repository import RequirementComponents
+from qw.local_store._repository import (
+    FailingRequirementComponents,
+    QwDirRequirementComponents,
+)
 from qw.local_store.directories import find_git_base_dir
 from qw.remote_repo.service import GitService, Service
 
@@ -22,17 +25,38 @@ class LocalStore:
     def __init__(self, base_dir: Path | None = None):
         """Find base dir if not defined."""
         self.base_dir = base_dir if base_dir else find_git_base_dir()
-
-        self.qw_dir = self.base_dir / ".qw"
-        self._requirement_component = RequirementComponents(self.qw_dir)
+        if self.base_dir is None:
+            self.qw_dir = None
+            self._requirement_component = FailingRequirementComponents(
+                "Qw has not been initialized, please run qw init",
+            )
+        else:
+            self.qw_dir = self.base_dir / ".qw"
+            self._requirement_component = QwDirRequirementComponents(
+                self.get_qw_dir(),
+            )
 
     @property
-    def _config_path(self):
+    def _config_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._config_file
 
     @property
-    def _data_path(self):
+    def _data_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._data_file
+
+    def get_qw_dir(self) -> pathlib.Path:
+        """Get the .qw directory path."""
+        r = self.qw_dir
+        if r is not None:
+            return r
+        msg = "We are not in a git project, so we cannot initialize!"
+        raise QwError(msg)
 
     def get_or_create_qw_dir(self, *, force: bool = False) -> pathlib.Path:
         """
@@ -41,24 +65,23 @@ class LocalStore:
         :param force: force re-initialisation.
         :return Path: qw directory
         """
+        qw_dir = self.get_qw_dir()
         logger.debug(".qw directory is '{dir}'", dir=self.qw_dir)
-        if self.qw_dir.is_file():
+        if qw_dir.is_file():
             msg = ".qw file exists, which is blocking us from making a .qw directory. Please delete it!"
             raise QwError(msg)
-        if not self.qw_dir.is_dir():
-            self.qw_dir.mkdir()
+        if not qw_dir.is_dir():
+            qw_dir.mkdir()
         elif not force:
             msg = ".qw directory already exists! Use existing configuration or use --force flag to reinitialize!"
             raise QwError(msg)
-        return self.qw_dir
+        return qw_dir
 
     def read_configuration(self) -> dict:
         """Get the configuration (as a dict) from the .qw/conf.json file."""
         if not self._config_path.is_file():
             msg = "Could not find a configuration directory, please initialize with `qw init`"
-            raise QwError(
-                msg,
-            )
+            raise QwError(msg)
         return _load_json(self._config_path)
 
     def read_local_data(self) -> list[dict]:

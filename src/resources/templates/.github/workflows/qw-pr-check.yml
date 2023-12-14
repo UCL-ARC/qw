@@ -28,4 +28,4 @@ jobs:
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'qw-ignore') }}
         id: qw
         run: |
-          qw check --review-request ${{ github.event.pull_request.number }}  --repository ${{ github.repository }} --token {{ secrets.GITHUB_TOKEN }}
+          qw check --review-request ${{ github.event.pull_request.number }}  --repository ${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}

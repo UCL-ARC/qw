@@ -41,12 +41,12 @@ jobs:
         run: |
           echo '## Problems found from last edit by {{ .user }} on {{ .date | date "2006-01-02"}}' > problems-header.md &&
           echo "" >> problems-header.md  &&
-          qw check --issue ${{ github.event.issue.number }}  --repository ${{ github.repository }} --token {{ secrets.GITHUB_TOKEN }} > problems.md &&
+          qw check --issue ${{ github.event.issue.number }}  --repository ${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }} > problems.md &&
           mkdir qw &&
           cat problems-header.md problems.md > qw/problems.md &&
           if [-z $(cat problems.md)]; then echo "problems=true" >> "$GITHUB_OUTPUT"; else echo "problems=" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/upload-artifact@master
-        if: ${{ steps.qw.outputs.problems != "" }}
+        if: ${{ steps.qw.outputs.problems != '' }}
         with:
           name: qw
           path: qw
