@@ -9,6 +9,7 @@ from jinja2 import Template
 from loguru import logger
 
 from qw.base import QwError
+from qw.regulations import iso13485
 
 
 class RequirementComponents(ABC):
@@ -101,5 +102,8 @@ class QwDirRequirementComponents(RequirementComponents):
     ):
         """Update the requirements with the current component data."""
         template = Template(template_source.read_text())
-        rendered_text = template.render(components=self._component_data["name"])
+        rendered_text = template.render(
+            components=self._component_data["name"],
+            categories=iso13485.REQUIREMENT_CATEGORIES,
+        )
         template_target.write_text(rendered_text)
