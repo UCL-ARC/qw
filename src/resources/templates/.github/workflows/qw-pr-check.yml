@@ -8,7 +8,7 @@ on:
       - "**.md"
 
 jobs:
-  qw-check:
+  qw-check-pr:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' }}
     steps:
