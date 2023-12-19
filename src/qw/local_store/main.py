@@ -1,4 +1,5 @@
 """Interaction with the qw local configuration and data storage."""
+from enum import Enum
 import os
 import pathlib
 import shutil
@@ -21,6 +22,10 @@ class LocalStore:
 
     _config_file = "conf.json"
     _data_file = "store.json"
+    _release_template_dir = "qw_release_templates"
+
+    class ReleaseTemplateSet(Enum):
+        Basic = "basic"
 
     def __init__(self, base_dir: Path | None = None):
         """Find base dir if not defined."""
@@ -160,6 +165,23 @@ class LocalStore:
             else:
                 shutil.copy(source_path, target_path)
 
+    def write_release_document_templates(
+        self,
+        service: GitService,
+        template_set: ReleaseTemplateSet,
+        force: bool=False,
+    ):
+        def copy_if_does_not_exist(src, dst, *args, **kwargs):
+            if not dst.exists():
+                shutil.copy2(src, dst, *args, **kwargs)
+
+        shutil.copytree(
+            service.qw_resources / "release_templates" / template_set.value,
+            self.base_dir / self._release_template_dir / template_set.value,
+            copy_function=shutil.copy2 if force else copy_if_does_not_exist,
+            dirs_exist_ok=True,
+        )
+
     def release_word_templates(self, out_dir=None):
         """
         Iterate through qw_release_templates/*.docx files.
@@ -170,7 +192,7 @@ class LocalStore:
         """
         if out_dir is None:
             out_dir = self.base_dir / "qw_release_out"
-        top = self.base_dir / "qw_release_templates"
+        top = self.base_dir / self._release_template_dir
         for dirpath, _dirnames, filenames in os.walk(top):
             out_path = out_dir / os.path.relpath(dirpath, top)
             for filename in filenames:

@@ -112,6 +112,7 @@ addopts = "--color=yes -v"
 testpaths = [
     "tests",
 ]
+pythonpath = "src"
 
 [tool.ruff]
 fix = true

@@ -9,12 +9,14 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
+import importlib.resources
 from pathlib import Path
 
 import git
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
+import qw.resources
 
 
 class Service(str, Enum):
@@ -193,7 +195,7 @@ class GitService(ABC):
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
-        self.qw_resources = Path(__file__).parents[2] / "resources"
+        self.qw_resources = importlib.resources.files(qw.resources)
 
     @abstractmethod
     def get_issue(self, number: int) -> Issue:

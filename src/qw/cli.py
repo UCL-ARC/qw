@@ -284,10 +284,39 @@ def configure(
             help="Replace existing configuration.",
         ),
     ] = False,
+    ci: Annotated[
+        Optional[bool],
+        typer.Option(
+            help=(
+                "Configure service's continuous integration"
+                " (default unless --release-templates is provided)"
+            )
+        )
+    ] = None,
+    release_templates: Annotated[
+        list[LocalStore.ReleaseTemplateSet],
+        typer.Option(
+            help=(
+                "Release file template sets to install in qw_release_templates"
+                " (and so be used by qw release)"
+            ),
+        ),
+        # Stop mypy, ruff and black from fighting each other,
+        # We must not write to release_templates.
+    ] = [],  # noqa: B006
 ):
     """Configure remote repository for qw (after initialisation and login credentials added)."""
     service = _build_and_check_service()
-    store.write_templates_and_ci(service, force=force)
+    if ci is None:
+        ci = not bool(release_templates)
+    if ci:
+        store.write_templates_and_ci(service, force=force)
+    for template_set in release_templates:
+        store.write_release_document_templates(
+            service,
+            template_set,
+            force=force
+        )
     typer.echo(
         "Local repository updated, please commit the changes made to your local repository.",
     )
