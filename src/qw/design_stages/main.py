@@ -270,11 +270,19 @@ def get_remote_stages(service: Service) -> DesignStages:
                 number=issue.number,
             )
             continue
-        # Could have multiple design stages from the same pull request so allow multiple outputs from a single issue
+        # Could have multiple design stages from the same pull request
+        # so allow multiple outputs from a single issue
         if "qw-user-need" in issue.labels:
+            logger.debug("User Need #{}", issue.number)
             output_stages.append(UserNeed.from_issue(issue))
         elif "qw-requirement" in issue.labels:
+            logger.debug("Requirement #{}", issue.number)
             output_stages.append(Requirement.from_issue(issue))
+        else:
+            logger.debug(
+                "#{} is neither a User Need nor a Requirement",
+                issue.number
+            )
     for pr in service.pull_requests:
         if "qw-ignore" in issue.labels:
             logger.debug(
@@ -283,4 +291,5 @@ def get_remote_stages(service: Service) -> DesignStages:
             )
             continue
         output_stages.append(DesignOutput.from_pr(pr))
+        logger.debug("PR #{} added", pr.number)
     return output_stages

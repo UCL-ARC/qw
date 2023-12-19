@@ -301,29 +301,33 @@ def configure(
                 " (and so be used by qw release)"
             ),
         ),
-        # Stop mypy, ruff and black from fighting each other,
-        # We must not write to release_templates.
+        # Stop mypy, ruff and black from fighting each other.
     ] = [],  # noqa: B006
 ):
     """Configure remote repository for qw (after initialisation and login credentials added)."""
     service = _build_and_check_service()
     if ci is None:
         ci = not bool(release_templates)
+    done = False
     if ci:
         store.write_templates_and_ci(service, force=force)
+        done = True
     for template_set in release_templates:
         store.write_release_document_templates(
             service,
             template_set,
             force=force
         )
-    typer.echo(
-        "Local repository updated, please commit the changes made to your local repository.",
-    )
-    service.update_remote(force=force)
-    typer.echo(
-        "Updated remote repository with rules",
-    )
+        done = True
+    if done:
+        typer.echo(
+            "Local repository updated, please commit the changes made to your local repository.",
+        )
+    if ci:
+        service.update_remote(force=force)
+        typer.echo(
+            "Updated remote repository with rules",
+        )
 
 
 @app.command()
