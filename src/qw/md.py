@@ -6,7 +6,9 @@ from enum import Enum
 from qw.base import QwError
 
 
-def text_under_heading(text: str, heading: str) -> str:
+def text_under_heading(
+    text: str, heading: str, default: str | None=None
+) -> str:
     """Extract all markdown after a h3 heading, until the next h3 heading."""
     heading_pattern = re.compile(f"^### +{re.escape(heading)}")
     sub_heading_lines = []
@@ -26,6 +28,8 @@ def text_under_heading(text: str, heading: str) -> str:
         sub_heading_lines.append(line)
 
     if not found_heading:
+        if default is not None:
+            return default
         msg = f"Could not find the heading: '### {heading}'"
         raise QwError(msg)
 

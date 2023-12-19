@@ -15,7 +15,6 @@ from qw.remote_repo.service import Issue, PullRequest, Service
 class UserNeed(DesignBase):
     """User need."""
 
-    not_required_fields = frozenset(["requirement"])
     design_stage = DesignStage.NEED
     plural = "user_needs"
 
@@ -37,8 +36,7 @@ class UserNeed(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description")
-        instance.requirement = text_under_heading(issue.body, "Requirements")
+        instance.description = text_under_heading(issue.body, "Description", "no description")
         return instance
 
     @classmethod
@@ -60,7 +58,7 @@ class UserNeed(DesignBase):
 class Requirement(DesignBase):
     """Requirement Design stage."""
 
-    not_required_fields = frozenset(["user_need"])
+    not_required_fields = frozenset(["user_need", "req_type", "component"])
     design_stage = DesignStage.REQUIREMENT
     plural = "requirements"
 
@@ -82,8 +80,16 @@ class Requirement(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description")
-        instance.user_need = text_under_heading(issue.body, "Parent user need")
+        instance.description = text_under_heading(issue.body, "Description", "no description")
+        user_need = text_under_heading(issue.body, "Parent user need", "")
+        if len(user_need) != 0:
+            instance.user_need = user_need
+        req_type = text_under_heading(issue.body, "Type of requirement", "")
+        if len(req_type) != 0:
+            instance.req_type = req_type
+        component = text_under_heading(issue.body, "Component", "")
+        if len(component) != 0:
+            instance.component = component
         return instance
 
     @classmethod
