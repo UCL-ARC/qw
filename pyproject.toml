@@ -22,6 +22,8 @@ dependencies = [
     "gitpython==3.1.36",
     "keyring==24.2.0",
     "loguru==0.7.2",
+    "lxml==4.9.3",
+    "python-docx==1.1.0",
     "python-frontmatter==1.0.1",
     "rich==13.6.0",
     "typer==0.9.0",
@@ -40,6 +42,7 @@ optional-dependencies = {dev = [
     "pre-commit",
     "pytest",
     "ruff",
+    "toml-sort",
     "tox>=4",
     "twine",
 ]}
@@ -48,7 +51,7 @@ requires-python = ">=3.11"
 license.file = "LICENCE.md"
 
 [project.scripts]
-qw = "qw.cli:app"
+qw = "qw.cli:run_app"
 
 [project.urls]
 homepage = "https://github.com/UCL-ARC/qw"
@@ -87,6 +90,7 @@ keyring = "^24.2.0"
 loguru = "^0.7.2"
 lxml = "^4.9.3"
 pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
 python = "^3.9"
 python-docx = "^1.0.1"
 rich = "^13.6.0"
@@ -108,6 +112,7 @@ addopts = "--color=yes -v"
 testpaths = [
     "tests",
 ]
+pythonpath = "src"
 
 [tool.ruff]
 fix = true

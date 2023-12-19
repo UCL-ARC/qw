@@ -10,7 +10,7 @@ body:
     id: description
     attributes:
       label: Description
-      description: Describe the design input
+      description: Describe the requirement
       placeholder: Specific requirement information
     validations:
       required: true
@@ -28,19 +28,8 @@ body:
     attributes:
       label: Type of requirement
       description: What is classification of the requirement?
-      options:
-        - Functional
-        - System inputs and outputs
-        - Application programming interface
-        - Alarms and warnings
-        - Security
-        - User interface
-        - Data definition and database
-        - Installation and acceptance
-        - Operation methods and maintenance
-        - Networking
-        - User maintenance
-        - Regulatory
+      options:{% for category in categories %}
+        - {{ category }}{% endfor %}
     validations:
       required: true
   - type: textarea

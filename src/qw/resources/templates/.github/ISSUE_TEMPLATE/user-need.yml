@@ -15,12 +15,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: design-inputs
-    attributes:
-      label: Design inputs
-      description: If design inputs already exist, enter the github issue number(s) in the form `#3` or `#3 #4`
-      placeholder: "#3 #4"
-  - type: textarea
     id: other-information
     attributes:
       label: Other information

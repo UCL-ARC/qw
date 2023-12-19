@@ -9,12 +9,14 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
+import importlib.resources
 from pathlib import Path
 
 import git
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
+import qw.resources
 
 
 class Service(str, Enum):
@@ -65,7 +67,7 @@ def splitstr(string, sep, count) -> tuple | None:
 
 def remote_address_to_host_user_repo(
     address: str,
-) -> tuple[str, str, str] | None:
+) -> tuple[str, str, str]:
     """
     Get (host, user, reponame) triple from the remote address.
 
@@ -77,16 +79,25 @@ def remote_address_to_host_user_repo(
     if bits is not None:
         host_user_repo = splitstr(bits[1], "/", 3)
         if host_user_repo is None:
-            return None
+            msg = f"Your remote address ({bits[1]}) must be user/repo"
+            raise QwError(msg)
         (host, user, repo_raw) = host_user_repo
     else:
         host_userrepo = splitstr(address, ":", 2)
         if host_userrepo is None:
-            return None
+            msg = (
+                f"Your remote address ({address}) must have a protocol"
+                " (such as https://) or be of the form host:user/repo."
+            )
+            raise QwError(msg)
         (host, userrepo) = host_userrepo
         user_repo = splitstr(userrepo, "/", 2)
         if user_repo is None:
-            return None
+            msg = (
+                f"Your remote address ({address}) must have a protocol"
+                " (such as https://) or be of the form host:user/repo."
+            )
+            raise QwError(msg)
         (user, repo_raw) = user_repo
     uh = splitstr(host, "@", 2)
     if uh is not None:
@@ -161,6 +172,21 @@ class Issue(ABC):
         ...
 
 
+class PullRequest(Issue):
+    """Pull Request."""
+
+    @property
+    @abstractmethod
+    def closing_issues(self) -> list[int]:
+        """
+        Get the list of ID numbers of closing issues for this issue.
+
+        Only makes sense for Pull Requests; that is, Issues that return
+        REQUEST from their item_type method.
+        """
+        ...
+
+
 class GitService(ABC):
     """A service hosting a git repository and project management tools."""
 
@@ -169,7 +195,7 @@ class GitService(ABC):
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
-        self.qw_resources = Path(__file__).parents[2] / "resources"
+        self.qw_resources = importlib.resources.files(qw.resources)
 
     @abstractmethod
     def get_issue(self, number: int) -> Issue:
@@ -180,6 +206,12 @@ class GitService(ABC):
     @abstractmethod
     def issues(self) -> list[Issue]:
         """Get all issues for the repository."""
+        ...
+
+    @property
+    @abstractmethod
+    def pull_requests(self) -> list[Issue]:
+        """Get all pull requests for the repository."""
         ...
 
     @property
@@ -195,3 +227,7 @@ class GitService(ABC):
     @abstractmethod
     def update_remote(self, *, force: bool) -> None:
         """Update remote repository with configration for qw tool."""
+
+    @abstractmethod
+    def check(self) -> bool:
+        """Check the connection to the service."""

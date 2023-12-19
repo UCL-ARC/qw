@@ -1,4 +1,6 @@
 """Interaction with the qw local configuration and data storage."""
+from enum import Enum
+import os
 import pathlib
 import shutil
 from pathlib import Path
@@ -7,7 +9,10 @@ from loguru import logger
 
 from qw.base import QwError
 from qw.local_store._json import _dump_json, _load_json
-from qw.local_store._repository import RequirementComponents
+from qw.local_store._repository import (
+    FailingRequirementComponents,
+    QwDirRequirementComponents,
+)
 from qw.local_store.directories import find_git_base_dir
 from qw.remote_repo.service import GitService, Service
 
@@ -17,21 +22,46 @@ class LocalStore:
 
     _config_file = "conf.json"
     _data_file = "store.json"
+    _release_template_dir = "qw_release_templates"
+
+    class ReleaseTemplateSet(Enum):
+        Basic = "basic"
 
     def __init__(self, base_dir: Path | None = None):
         """Find base dir if not defined."""
         self.base_dir = base_dir if base_dir else find_git_base_dir()
-
-        self.qw_dir = self.base_dir / ".qw"
-        self._requirement_component = RequirementComponents(self.qw_dir)
+        if self.base_dir is None:
+            self.qw_dir = None
+            self._requirement_component = FailingRequirementComponents(
+                "Qw has not been initialized, please run qw init",
+            )
+        else:
+            self.qw_dir = self.base_dir / ".qw"
+            self._requirement_component = QwDirRequirementComponents(
+                self.get_qw_dir(),
+            )
 
     @property
-    def _config_path(self):
+    def _config_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._config_file
 
     @property
-    def _data_path(self):
+    def _data_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._data_file
+
+    def get_qw_dir(self) -> pathlib.Path:
+        """Get the .qw directory path."""
+        r = self.qw_dir
+        if r is not None:
+            return r
+        msg = "We are not in a git project, so we cannot initialize!"
+        raise QwError(msg)
 
     def get_or_create_qw_dir(self, *, force: bool = False) -> pathlib.Path:
         """
@@ -40,24 +70,23 @@ class LocalStore:
         :param force: force re-initialisation.
         :return Path: qw directory
         """
+        qw_dir = self.get_qw_dir()
         logger.debug(".qw directory is '{dir}'", dir=self.qw_dir)
-        if self.qw_dir.is_file():
+        if qw_dir.is_file():
             msg = ".qw file exists, which is blocking us from making a .qw directory. Please delete it!"
             raise QwError(msg)
-        if not self.qw_dir.is_dir():
-            self.qw_dir.mkdir()
+        if not qw_dir.is_dir():
+            qw_dir.mkdir()
         elif not force:
             msg = ".qw directory already exists! Use existing configuration or use --force flag to reinitialize!"
             raise QwError(msg)
-        return self.qw_dir
+        return qw_dir
 
     def read_configuration(self) -> dict:
         """Get the configuration (as a dict) from the .qw/conf.json file."""
         if not self._config_path.is_file():
             msg = "Could not find a configuration directory, please initialize with `qw init`"
-            raise QwError(
-                msg,
-            )
+            raise QwError(msg)
         return _load_json(self._config_path)
 
     def read_local_data(self) -> list[dict]:
@@ -135,3 +164,41 @@ class LocalStore:
                 )
             else:
                 shutil.copy(source_path, target_path)
+
+    def write_release_document_templates(
+        self,
+        service: GitService,
+        template_set: ReleaseTemplateSet,
+        force: bool=False,
+    ):
+        def copy_if_does_not_exist(src, dst, *args, **kwargs):
+            if not Path(dst).exists():
+                shutil.copy2(src, dst, *args, **kwargs)
+
+        shutil.copytree(
+            service.qw_resources / "release_templates" / template_set.value,
+            self.base_dir / self._release_template_dir / template_set.value,
+            copy_function=shutil.copy2 if force else copy_if_does_not_exist,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__*"),
+        )
+
+    def release_word_templates(self, out_dir=None):
+        """
+        Iterate through qw_release_templates/*.docx files.
+
+        Returns a pair (in_path, out_path) where in_path is the path
+        of the template file and out_path is the path it should be
+        written to.
+        """
+        if out_dir is None:
+            out_dir = self.base_dir / "qw_release_out"
+        top = self.base_dir / self._release_template_dir
+        for dirpath, _dirnames, filenames in os.walk(top):
+            out_path = out_dir / os.path.relpath(dirpath, top)
+            for filename in filenames:
+                if Path(filename).suffix == ".docx":
+                    yield (
+                        Path(dirpath) / filename,
+                        Path(out_path) / filename,
+                    )
