@@ -172,7 +172,7 @@ class LocalStore:
         force: bool=False,
     ):
         def copy_if_does_not_exist(src, dst, *args, **kwargs):
-            if not dst.exists():
+            if not Path(dst).exists():
                 shutil.copy2(src, dst, *args, **kwargs)
 
         shutil.copytree(
@@ -180,6 +180,7 @@ class LocalStore:
             self.base_dir / self._release_template_dir / template_set.value,
             copy_function=shutil.copy2 if force else copy_if_does_not_exist,
             dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__*"),
         )
 
     def release_word_templates(self, out_dir=None):
