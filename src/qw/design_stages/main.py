@@ -8,20 +8,20 @@ from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import DesignStage, RemoteItemType
 from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
-from qw.remote_repo.service import Issue, Service
+from qw.remote_repo.service import Issue, PullRequest, Service
 
 
 class UserNeed(DesignBase):
     """User need."""
 
     not_required_fields = frozenset(["requirement"])
+    design_stage = DesignStage.NEED
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
         super().__init__()
         self.requirement: str | None = None
         self.remote_item_type = RemoteItemType.ISSUE
-        self.stage = DesignStage.NEED
 
     @classmethod
     def from_issue(cls, issue: Issue) -> Self:
@@ -39,18 +39,33 @@ class UserNeed(DesignBase):
         instance.requirement = text_under_heading(issue.body, "Requirements")
         return instance
 
+    @classmethod
+    def is_dict_reference(cls, self_dict, from_stage_name):
+        """Identify Requirements dicts that refer to self_dict."""
+        logger.debug("User Need backreferences from {}?", from_stage_name)
+        if from_stage_name != DesignStage.REQUIREMENT.value:
+            logger.debug("No")
+            return None
+        internal_id = self_dict.get("internal_id", None)
+        if internal_id is None:
+            logger.debug("No internal_id!")
+            return None
+        iid = f"#{internal_id}"
+        logger.debug("Looking for .user_need == {}", iid)
+        return lambda d: d.get("user_need", None) == iid
+
 
 class Requirement(DesignBase):
     """Requirement Design stage."""
 
     not_required_fields = frozenset(["user_need"])
+    design_stage = DesignStage.REQUIREMENT
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
         super().__init__()
         self.user_need: str | None = None
         self.remote_item_type = RemoteItemType.ISSUE
-        self.stage = DesignStage.REQUIREMENT
 
     @classmethod
     def from_issue(cls, issue: Issue) -> Self:
@@ -67,6 +82,84 @@ class Requirement(DesignBase):
         instance.description = text_under_heading(issue.body, "Description")
         instance.user_need = text_under_heading(issue.body, "Parent user need")
         return instance
+
+    @classmethod
+    def is_dict_reference(cls, self_dict, from_stage_name):
+        """
+        Identify dicts that refer to self_dict.
+
+        This could be a single Design Output or a single User Need.
+        """
+        if from_stage_name == DesignStage.NEED.value:
+            internal_id = self_dict.get("user_need", None)
+            if internal_id is None or internal_id[0] != "#":
+                return None
+            iid = internal_id[1:]
+            if not iid.isnumeric():
+                return None
+            iid = int(iid)
+            return lambda d: d.get("internal_id", None) == iid
+        if from_stage_name == DesignStage.OUTPUT.value:
+            internal_id = self_dict.get("internal_id", None)
+            if internal_id is None:
+                return None
+            return lambda d: internal_id in d.get("closing_issues", [])
+        return None
+
+
+class DesignOutput(DesignBase):
+    """Output Design Stage."""
+
+    design_stage = DesignStage.OUTPUT
+
+    def __init__(self) -> None:
+        """
+        Initialize DesignOutput (internal only).
+
+        Please use the from_markdown or from_dict methods instead of
+        using this constructor.
+        """
+        super().__init__()
+        self.requirement: str | None = None
+        self.remote_item_type = RemoteItemType.REQUEST
+
+    @classmethod
+    def from_pr(cls, pr: PullRequest) -> Self:
+        """
+        Create design output from issue data.
+
+        :param issue: pull request data from remote repository
+        :return: DesignOutput instance
+        """
+        instance = cls()
+
+        instance.title = pr.title
+        instance.internal_id = pr.number
+        instance.description = pr.body
+        instance.closing_issues = pr.closing_issues
+        return instance
+
+    @classmethod
+    def is_dict_reference(cls, self_dict, from_stage_name):
+        """Identify Requirements dicts that self_dict referes to."""
+        if from_stage_name != DesignStage.REQUIREMENT.value:
+            return None
+        requirements = self_dict.get("closing_issues", [])
+        logger.debug("Requirements are: {}", requirements)
+        return lambda d: d.get("internal_id", None) in requirements
+
+
+DESIGN_STAGE_CLASSES = DesignBase.__subclasses__()
+_DESIGN_STAGE_CLASS_FROM_NAME = {
+    ds_class.design_stage.value: ds_class for ds_class in DESIGN_STAGE_CLASSES
+}
+
+
+def get_design_stage_class_from_name(name: str) -> type[DesignBase] | None:
+    """Get the subclass of DesignBase from a DesignStage enum value."""
+    if name in _DESIGN_STAGE_CLASS_FROM_NAME:
+        return _DESIGN_STAGE_CLASS_FROM_NAME[name]
+    return None
 
 
 DesignStages = list[UserNeed | Requirement]
@@ -96,10 +189,9 @@ def _build_design_stage_or_throw(data_item: dict[str, Any]):
             f"should be one of {[stage.value for stage in DesignStage]}"
         )
         raise QwError(msg) from exception
-    if stage == DesignStage.REQUIREMENT:
-        return Requirement.from_dict(data_item)
-    if stage == DesignStage.NEED:
-        return UserNeed.from_dict(data_item)
+    design_stage_class = get_design_stage_class_from_name(stage)
+    if design_stage_class is not None:
+        return design_stage_class.from_dict(data_item)
 
     not_implemented = f"{stage} not implemented"
     raise QwError(not_implemented)
@@ -123,6 +215,14 @@ def get_remote_stages(service: Service) -> DesignStages:
         # Could have multiple design stages from the same pull request so allow multiple outputs from a single issue
         if "qw-user-need" in issue.labels:
             output_stages.append(UserNeed.from_issue(issue))
-        if "qw-requirement" in issue.labels:
+        elif "qw-requirement" in issue.labels:
             output_stages.append(Requirement.from_issue(issue))
+    for pr in service.pull_requests:
+        if "qw-ignore" in issue.labels:
+            logger.debug(
+                "PR {number} tagged to be ignored, skipping",
+                number=pr.number,
+            )
+            continue
+        output_stages.append(DesignOutput.from_pr(pr))
     return output_stages

@@ -1,5 +1,6 @@
 """Merges data into output documents."""
 import copy
+from collections.abc import Callable
 from typing import Any, TypeAlias
 
 import docx
@@ -52,28 +53,41 @@ class MergeData:
     paragraphs beneath it including subheadings) will be copied
     enough times to hold each value.
 
-    Some of these objects might refer to each other. So, if an
-    object "MyObject" has a value "OtherObjectName": "123" and there
-    is an object called "OtherObjectName", the value is assumed to
-    refer to the "OtherObjectName" objects whose "id" key is "123".
+    Some of these objects might refer to each other. The argument
+    filter_referencers is a function taking arguments
+    (from_obj_type, from_objs, to_obj_type, to_obj).
+    from_obj_type is a key from data and from_objs are the
+    associated values. to_obj_type is a different key from data
+    and to_obj is one of the associated values. The function
+    should return those elements of from_objs that refer to
+    to_obj. If the from_obj_type objects never refer to
+    to_obj_type objects, None should be returned.
 
-    We can use this for nested loops. In this case if you have a
-    section of the document with fields from "OtherObjectName" with
-    "id": "123" then the fields referring to "MyObject" will only
-    select those "MyObject" objects whose "OtherObjectName" values
-    match "123".
+    We can use this for nested loops. If filter_referencers returns
+    a subset, these will be the only ones of those objects
+    available to the paragraphs under this one.
 
-    In this way we can have a heading advertising "OtherObjectName"
-    and then subheadings advertising "MyObject" and each MyObject
-    subheading will be placed nicely under the correct
-    "OtherObjectName" heading.
-
-    This will also work with nested lists. It will eventually work
-    with tables, too, but that might be harder to describe and
-    harder to implement.
+    This works for headings with paragraphs underneath, and for
+    lists with sublists underneath.
     """
 
-    def __init__(self, data: dict[str, Any]):
+    # Type of a function that filters objects to be only those
+    # that point to another object
+    FilterReferencesCallable: TypeAlias = Callable[
+        [
+            str,  # from_obj_type
+            list[dict[str, Any]],  # from_objs
+            str,  # to_obj_type
+            dict[str, Any],  # to_obj
+        ],
+        list[dict[str, Any]],
+    ]
+
+    def __init__(
+        self,
+        data: dict[str, Any],
+        filter_referencers: FilterReferencesCallable,
+    ):
         """
         Initialize with data.
 
@@ -81,6 +95,34 @@ class MergeData:
 
         [{"ObjectNames": [{"key"; "value"}]},
         "ObjectName": {"key", "value"}}]
+
+        The filter_referencers callable takes arguments:
+
+        filter_referencers(from_obj_type, from_obj, to_obj_type, to_obj)
+
+        For example:
+
+        filter_referencers(
+            "software-requirement",
+            [
+                {"id":5, "user-need": 1, ... },
+                {"id":6, "user-need": 2, ... },
+                {"id":7, "user-need": 2, ... },
+                {"id":8, "user-need": 3, ... },
+            ]
+            "user-need",
+            {"id": 2, ... }
+        )
+
+        and in this case should return:
+
+        [
+            {"id":6, "user-need": 2, ... },
+            {"id":7, "user-need": 2, ... },
+        ]
+
+        because these are the elements of from_obj that refer to the
+        to_obj argument.
         """
         logger.debug("Data: {0}", data)
         self.data = data
@@ -91,6 +133,8 @@ class MergeData:
         self.deeper = copy.copy(data)
         # Iterations we are currently engaged in at this level.
         self.iterations: dict[str, int] = {}
+        self.filter_referencers = filter_referencers
+        self.iteration_advance: set[str] = set()
 
     def get_data(self, field_name: str) -> tuple[str | None, bool]:
         """
@@ -131,6 +175,7 @@ class MergeData:
                 obj,
             )
             return (obj.get(prop, None), True)
+        self.iteration_advance.add(k)
         if k not in self.iterations:
             logger.debug("beginning iteration for {0}", k)
             self._set_deeper(k, 0)
@@ -150,26 +195,23 @@ class MergeData:
         this current iteraction.
         """
         self.iterations[key] = i
-        logger.debug("iteration for {0} is now {1}", key, i)
         objs = self.data[key]
         if objs is None or len(objs) <= i:
+            logger.debug("no more objects")
             return
         obj = objs[i]
         if not isinstance(obj, dict):
-            return
-        obj_id = obj.get("id", None)
-        if obj_id is None:
+            logger.debug("not a real object")
             return
         # Find out which other values in self.data
-        # are refer to obj
+        # refer to obj
         for d_key, d_objs in self.data.items():
-            # do the d_objs refer back to `key`?
-            if isinstance(d_objs, list) and len(d_objs) != 0 and key in d_objs[0]:
-                # Yes, so filter them to those that refer to
-                # key in the deeper data.
-                self.deeper[d_key] = list(
-                    filter(lambda d_obj: d_obj.get(key, None) == obj_id, d_objs),
-                )
+            if isinstance(d_objs, list) and len(d_objs) != 0:
+                # do the d_objs refer to `key`?
+                refs = self.filter_referencers(d_key, d_objs, key, obj)
+                if refs is not None:
+                    logger.debug("Filtered {} by reference to {}", d_key, obj)
+                    self.deeper[d_key] = list(refs)
 
     def deeper_data(self) -> _MergeData:
         """
@@ -180,11 +222,17 @@ class MergeData:
         the iterated objects and narrow them to the iterations'
         current positions.
         """
-        logger.debug("iteration state: {0}", self.iterations)
-        for k, i in self.iterations.items():
-            objs = self.data[k]
-            self.deeper[k] = objs[i] if i < len(objs) else None
-        return MergeData(self.deeper)
+        logger.debug("deeper: iteration state: {0}", self.iterations)
+        for k, objs in self.data.items():
+            i = self.iterations.get(k, None)
+            if i is not None:
+                self.deeper[k] = objs[i] if i < len(objs) else None
+        return MergeData(self.deeper, self.filter_referencers)
+
+    def reset_iterations(self):
+        """Reset the iterations for all the data."""
+        for k in self.iterations:
+            self._set_deeper(k, 0)
 
     def next_section(self):
         """
@@ -195,8 +243,11 @@ class MergeData:
         clear what we should actually do, but let's just stick
         with this.
         """
+        logger.debug("next: iteration state: {0}", self.iterations)
         for k, i in self.iterations.items():
-            self._set_deeper(k, i + 1)
+            increment = 1 if k in self.iteration_advance else 0
+            self._set_deeper(k, i + increment)
+        self.iteration_advance.clear()
 
 
 class Document:
@@ -216,20 +267,26 @@ class Document:
         """
         logger.debug("Starting section")
         while section.next_section():
+            logger.debug(f"section {section.start_index}-{section.end_index}")
             fs = section.fields()
             if len(fs) == 1 and section.paragraph_is_only_field():
-                # Replace the entire first paragraph
-                field_name = fs.pop()
-                self._replace_section_head(section, data, field_name)
+                # Replace the entire section
+                for field_name in fs:
+                    # there is only one of these (so only one iteration)
+                    self._replace_section_head(section, data, field_name)
             else:
                 # Just replace the fields with plain text
                 self._replace_fields_in_section_head(section, data, fs)
-            # Now deal with the deeper sections under the (possibly
-            # replaced) first paragraph
-            deeper = section.deeper()
-            if deeper:
-                self._interpolate_sections(deeper, data.deeper_data())
-            data.next_section()
+                # Now deal with the deeper sections under the (possibly
+                # replaced) first paragraph
+                deeper = section.deeper()
+                if deeper:
+                    self._interpolate_sections(deeper, data.deeper_data())
+            if section.at_iteration_end():
+                logger.debug(f"Resetting iterations, depth: {section._depth()}")
+                data.reset_iterations()
+            else:
+                data.next_section()
         logger.debug("Finished section")
 
     def _replace_section_head(
@@ -272,7 +329,10 @@ class Document:
         data -- the data to pull from.
         fs -- set of field names to replace.
         """
+        if len(fs) == 0:
+            return
         duplicated = False
+        replaced_any = False
         for field_name in fs:
             (replacement_md, final) = data.get_data(field_name)
             if not duplicated and not final:
@@ -281,27 +341,36 @@ class Document:
                 section.duplicate()
                 duplicated = True
             if replacement_md is None:
-                # One of our fields is exhausted, so we'll replace the
-                # entire section. This is probably not very sensible,
-                # but it will do for now.
-                section.remove_nonfirst_paragraphs()
-                replacer = DocSectionParagraphReplacer(section)
-                replacer.render_markdown(NONE_PARAGRAPH)
-                return
+                replacement_md = NONE_PARAGRAPH
+            else:
+                replaced_any = True
             if isinstance(replacement_md, str):
                 replacement = markdown_to_plain_text(replacement_md)
             else:
                 replacement = str(replacement_md)
             section.replace_field(field_name, replacement)
+        if not replaced_any:
+            section.remove_nonfirst_paragraphs()
+            replacer = DocSectionParagraphReplacer(section)
+            replacer.render_markdown(NONE_PARAGRAPH)
 
-    def write(self, output_file: str, data: dict[str, list[str]]) -> None:
+    def write(
+        self,
+        output_file: str,
+        data: dict[str, list[str]],
+        filter_referencers: MergeData.FilterReferencesCallable,
+    ) -> None:
         """
         Write out a document based on the template.
 
         outputFile -- the filename to write to.
         data -- the data to place into the fields.
+        filter_referencers -- see MergeData.__init__
         """
-        self._interpolate_sections(self.top, MergeData(data))
+        self._interpolate_sections(
+            self.top,
+            MergeData(data, filter_referencers),
+        )
         self.docx.save(output_file)
 
 

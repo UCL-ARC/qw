@@ -161,6 +161,21 @@ class Issue(ABC):
         ...
 
 
+class PullRequest(Issue):
+    """Pull Request."""
+
+    @property
+    @abstractmethod
+    def closing_issues(self) -> list[int]:
+        """
+        Get the list of ID numbers of closing issues for this issue.
+
+        Only makes sense for Pull Requests; that is, Issues that return
+        REQUEST from their item_type method.
+        """
+        ...
+
+
 class GitService(ABC):
     """A service hosting a git repository and project management tools."""
 
@@ -180,6 +195,12 @@ class GitService(ABC):
     @abstractmethod
     def issues(self) -> list[Issue]:
         """Get all issues for the repository."""
+        ...
+
+    @property
+    @abstractmethod
+    def pull_requests(self) -> list[Issue]:
+        """Get all pull requests for the repository."""
         ...
 
     @property
