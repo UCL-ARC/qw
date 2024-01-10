@@ -109,10 +109,10 @@ twine = "^4.0.2"
 
 [tool.pytest.ini_options]
 addopts = "--color=yes -v"
+pythonpath = "src"
 testpaths = [
     "tests",
 ]
-pythonpath = "src"
 
 [tool.ruff]
 fix = true

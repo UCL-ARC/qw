@@ -36,7 +36,11 @@ class UserNeed(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description", "no description")
+        instance.description = text_under_heading(
+            issue.body,
+            "Description",
+            "no description",
+        )
         return instance
 
     @classmethod
@@ -80,7 +84,11 @@ class Requirement(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description", "no description")
+        instance.description = text_under_heading(
+            issue.body,
+            "Description",
+            "no description",
+        )
         user_need = text_under_heading(issue.body, "Parent user need", "")
         if len(user_need) != 0:
             instance.user_need = user_need
@@ -287,7 +295,7 @@ def get_remote_stages(service: Service) -> DesignStages:
         else:
             logger.debug(
                 "#{} is neither a User Need nor a Requirement",
-                issue.number
+                issue.number,
             )
     for pr in service.pull_requests:
         if "qw-ignore" in issue.labels:

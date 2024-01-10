@@ -50,7 +50,7 @@ def test_replace_fields_with_data():
                 },
             ],
         }
-        doc.write(temp_file, data, filter_data_references)
+        doc.write(temp_file.name, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         pwf_para = "Paragraph with fields {id} and {name}."
         expecteds = [
@@ -145,7 +145,7 @@ def test_replace_hierarchical_fields_with_data():
     )
     with NamedTemporaryFile("w+b") as temp_file:
         data = REQ_NEED_OUTPUT_DATA
-        doc.write(temp_file, data, filter_data_references)
+        doc.write(temp_file.name, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         expecteds = []
         for sysreq in data["user-need"]:
@@ -220,7 +220,7 @@ def test_replace_hierarchical_fields_with_data_2():
     )
     with NamedTemporaryFile("w+b") as temp_file:
         data = REQ_NEED_OUTPUT_DATA
-        doc.write(temp_file, data, filter_data_references)
+        doc.write(temp_file.name, data, filter_data_references)
         dx = docx.Document(temp_file.name)
         expecteds = []
         for sysreq in data["user-need"]:

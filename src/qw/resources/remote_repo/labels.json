@@ -1,13 +1,17 @@
-[{
+[
+  {
     "name": "qw-ignore",
     "description": "Item to be ignored by the QW tool",
     "color": "00ffd0"
-}, {
+  },
+  {
     "name": "qw-requirement",
     "description": "Software requirement",
     "color": "0df279"
-}, {
+  },
+  {
     "name": "qw-user-need",
     "description": "System requirement",
     "color": "95ff00"
-}]
+  }
+]

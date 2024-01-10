@@ -290,8 +290,8 @@ def configure(
             help=(
                 "Configure service's continuous integration"
                 " (default unless --release-templates is provided)"
-            )
-        )
+            ),
+        ),
     ] = None,
     release_templates: Annotated[
         list[LocalStore.ReleaseTemplateSet],
@@ -316,7 +316,7 @@ def configure(
         store.write_release_document_templates(
             service,
             template_set,
-            force=force
+            force=force,
         )
         done = True
     if done:

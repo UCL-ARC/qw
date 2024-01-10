@@ -5,18 +5,18 @@ Abstract Service (such as github or gitlab) in which
 the project managment interest resides.
 """
 
+import importlib.resources
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
-import importlib.resources
 from pathlib import Path
 
 import git
 
+import qw.resources
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
-import qw.resources
 
 
 class Service(str, Enum):
@@ -222,7 +222,9 @@ class GitService(ABC):
 
     def relative_target_path(self, base_folder: str, resource_path: Path) -> Path:
         """Find the relative path that a resource should be copied to."""
-        return resource_path.relative_to(self.qw_resources / base_folder)
+        directory = self.qw_resources.joinpath(base_folder)
+        with importlib.resources.as_file(directory) as path:
+            return resource_path.relative_to(path)
 
     @abstractmethod
     def update_remote(self, *, force: bool) -> None:

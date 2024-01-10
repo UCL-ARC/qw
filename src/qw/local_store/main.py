@@ -1,9 +1,10 @@
 """Interaction with the qw local configuration and data storage."""
-from enum import Enum
 import os
 import pathlib
 import shutil
+from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -16,6 +17,9 @@ from qw.local_store._repository import (
 from qw.local_store.directories import find_git_base_dir
 from qw.remote_repo.service import GitService, Service
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class LocalStore:
     """Local storage of configuration, design stages and interaction with the local repository configuration."""
@@ -25,6 +29,13 @@ class LocalStore:
     _release_template_dir = "qw_release_templates"
 
     class ReleaseTemplateSet(Enum):
+        """
+        Sets of documents that can be automatically installed.
+
+        The idea is that we can have a set for each different standard
+        we want to conform to, plus others for management.
+        """
+
         Basic = "basic"
 
     def __init__(self, base_dir: Path | None = None):
@@ -169,16 +180,21 @@ class LocalStore:
         self,
         service: GitService,
         template_set: ReleaseTemplateSet,
-        force: bool=False,
+        force: bool,  # noqa: FBT001
     ):
-        def copy_if_does_not_exist(src, dst, *args, **kwargs):
-            if not Path(dst).exists():
-                shutil.copy2(src, dst, *args, **kwargs)
+        """Copy release documentation templates into the repo."""
 
+        def copy_if_does_not_exist(src: str, dst: str):
+            if not Path(dst).exists():
+                shutil.copy2(src, dst)
+
+        copy_fn: Callable[[str, str], object] = shutil.copy2
+        if not force:
+            copy_fn = copy_if_does_not_exist
         shutil.copytree(
             service.qw_resources / "release_templates" / template_set.value,
             self.base_dir / self._release_template_dir / template_set.value,
-            copy_function=shutil.copy2 if force else copy_if_does_not_exist,
+            copy_function=copy_fn,
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns("__*"),
         )

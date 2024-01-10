@@ -290,7 +290,8 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
 }}""",
         )
         if not status_is_ok(response.status_code):
-            raise QwError("Could not get existing labels from github")
+            msg = "Could not get existing labels from github"
+            raise QwError(msg)
         result = json.loads(response.content)
         nodes = result["data"]["repository"]["labels"]
         if len(nodes["nodes"]) < nodes["totalCount"]:
@@ -313,7 +314,10 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
             if label["name"] in current:
                 continue
             url = self.gh.session.build_url(
-                "repos", self.username, self.reponame, "labels"
+                "repos",
+                self.username,
+                self.reponame,
+                "labels",
             )
             response = self.gh.session.request(
                 "POST",
@@ -331,7 +335,9 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
 
     def update_remote(self, *, force: bool) -> None:
         """Update remote repository with configration for qw tool."""
-        with (self.qw_resources / "remote_repo" / "labels.json").open(encoding="utf-8") as h:
+        with (self.qw_resources / "remote_repo" / "labels.json").open(
+            encoding="utf-8",
+        ) as h:
             self.add_labels(json.load(h))
         # load configured ruleset as a python dict
         ruleset_template = self.qw_resources / "remote_repo/github/ruleset.json.jinja2"

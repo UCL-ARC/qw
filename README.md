@@ -19,6 +19,28 @@ and notify when manual verification should be rerun due to changes in requiremen
 
 ## Installation
 
+### Using pipx
+
+Install the latest version from github:
+
+```
+pipx install git+https://github.com/UCL-ARC/qw
+```
+
+Install a particular version from github:
+
+```
+pipx install git+https://github.com/UCL-ARC/qw@v1.0
+```
+
+Install from the source code directory:
+
+```
+pipx install .
+```
+
+### Using venv
+
 The `qw` tool requires python 3.9 or greater, if your project is in python then we suggest adding it to the developer requirements.
 If not, you may want to create a virtual environment for your python, one option is the [venv](https://docs.python.org/3.9/library/venv.html) module.
 

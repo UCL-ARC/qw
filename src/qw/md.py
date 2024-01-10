@@ -7,7 +7,9 @@ from qw.base import QwError
 
 
 def text_under_heading(
-    text: str, heading: str, default: str | None=None
+    text: str,
+    heading: str,
+    default: str | None = None,
 ) -> str:
     """Extract all markdown after a h3 heading, until the next h3 heading."""
     heading_pattern = re.compile(f"^### +{re.escape(heading)}")
