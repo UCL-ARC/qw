@@ -159,7 +159,7 @@ class LocalStore:
                 should_not_exist.append(target_path)
 
         if should_not_exist:
-            msg = f"Templates already exists, rerun with '--force' to override existing templates:'n {should_not_exist}"
+            msg = f"Templates already exist, rerun with '--force' to override existing templates:'n {should_not_exist}"
             raise QwError(msg)
 
         for source_path, target_path in zip(

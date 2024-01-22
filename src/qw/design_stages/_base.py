@@ -1,4 +1,5 @@
 """Base class for design stages."""
+import re
 from abc import ABC
 from collections.abc import Callable
 from copy import copy
@@ -17,6 +18,8 @@ class DesignBase(ABC):
         ["title", "description", "internal_id", "version"],
     )
     design_stage: DesignStage | None = None
+
+    LINK_RE = re.compile(r"#(\d+)")
 
     def __init__(self) -> None:
         """Shared fields for all design stage classes."""
@@ -39,6 +42,15 @@ class DesignBase(ABC):
             if not value:
                 msg = f"No {field} in {self.__class__.__name__}"
                 raise QwError(msg)
+
+    def get_links_from_text(self, text) -> list[int]:
+        """Get #IDs contained in text."""
+        if text is None:
+            return []
+        return [
+            int(match)
+            for match in self.LINK_RE.findall(text)
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         """
