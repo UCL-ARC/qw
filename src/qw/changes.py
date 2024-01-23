@@ -39,7 +39,28 @@ class ChangeHandler:
         def show(self):
             """Show this difference on the screen."""
             if not bool(self._diff):
-                return
+                if self._local_item is None:
+                    Console().print(
+                        "[green]New item ({}) #{}: {}[/]".format(
+                            self._remote_item.stage.value,
+                            self._remote_item.internal_id,
+                            self._remote_item.title.replace("[", "\\["),
+                        ),
+                    )
+                    return self._remote_item
+                if self._remote_item is not None:
+                    # Both exist, but no difference
+                    return self._local_item
+                if not self._local_item.is_marked_deleted():
+                    # Only a local item, and it has not yet been marked as deleted
+                    Console().print(
+                        "[red]Removed item ({}) #{}: {}[/]".format(
+                            self._local_item.stage.value,
+                            self._local_item.internal_id,
+                            self._local_item.title.replace("[", "\\["),
+                        ),
+                    )
+                return None
             table = Table(
                 title=f"Changes detected for {self._local_item}:",
                 show_lines=True,
@@ -56,6 +77,7 @@ class ChangeHandler:
                 table.add_row(field, differences["self"], differences["other"])
 
             Console().print(table)
+            return None
 
         def prompt_for_version_change(self):
             """
@@ -72,13 +94,17 @@ class ChangeHandler:
                 if self._remote_item is not None:
                     # Both exist, but no difference
                     return self._local_item
-                # Only local exists, remote has been deleted
-                if Confirm.ask(
-                    f"{self._local_item} no longer exists in remote, would you like to remove it from the local store?",
-                ):
-                    # Remove the local item
-                    return None
-                # Keep the local item
+                if not self._local_item.is_marked_deleted():
+                    # Only local exists, remote has been deleted,
+                    # user has not requested to keep it yet
+                    if Confirm.ask(
+                        f"{self._local_item} no longer exists in remote,"
+                        " would you like to remove it from the local store?",
+                    ):
+                        # Remove the local item
+                        return None
+                    # Keep the local item
+                    self._local_item.mark_as_deleted()
                 return self._local_item
             prompt = "\n".join(
                 [

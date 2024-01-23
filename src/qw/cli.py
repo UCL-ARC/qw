@@ -283,10 +283,10 @@ def freeze(
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)
     diff_elements = change_handler.diff_remote_and_local_items()
+    to_save = change_handler.get_local_items_from_diffs(diff_elements)
     if dry_run:
         logger.info("Finished freeze (dry run)")
     else:
-        to_save = change_handler.get_local_items_from_diffs(diff_elements)
         store.write_local_data([x.to_dict() for x in to_save])
         logger.info("Finished freeze")
 
