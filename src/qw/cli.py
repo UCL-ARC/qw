@@ -12,8 +12,10 @@ from typing import Annotated, Any, Optional
 import git
 import typer
 from loguru import logger
+from rich.console import Console
 from rich.prompt import Prompt
 
+from qw._version import __version__
 from qw.base import QwError
 from qw.changes import ChangeHandler
 from qw.design_stages.checks import run_checks
@@ -45,6 +47,14 @@ class LogLevel(str, Enum):
     INFO = "info"
     DEBUG = "debug"
 
+    def __str__(self):
+        """
+        Return the value.
+
+        This makes Typer print the correct thing as a default value.
+        """
+        return self.value
+
 
 LOGLEVEL_TO_LOGURU = {
     LogLevel.DEBUG: 10,
@@ -65,8 +75,24 @@ def _build_and_check_service(conf: dict | None = None):
     return service
 
 
+def version_callback(value):
+    """Print the version and exit."""
+    if value:
+        Console().print(f"qw version: [cyan]{__version__}[/]", highlight=False)
+        raise typer.Exit
+
+
 @app.callback()
 def main(
+    _version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            help="Print the version and exit",
+            callback=version_callback,
+            is_eager=True,
+        ),
+    ] = None,
     loglevel: Annotated[
         LogLevel,
         typer.Option(
