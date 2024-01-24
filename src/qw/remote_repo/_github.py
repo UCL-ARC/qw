@@ -84,6 +84,12 @@ class PullRequest(qw.remote_repo.service.PullRequest):
         self._number = number
         self._title = title
         self._closing_issues = kwargs.get("closingIssuesReferences", [])
+        self._paths = []
+
+    def add_paths(self, paths: list[str]) -> None:
+        self._paths.extend(paths)
+        for p in paths:
+            logger.info(p)
 
     @property
     def number(self) -> int:
@@ -190,13 +196,47 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
         )
         if not status_is_ok(response.status_code):
             logger.info(
-                "Failed ({}) to get the closing numbers for issue {}",
+                "Failed ({}) to get the closing numbers for pull request #{}",
                 response.status_code,
                 number,
             )
             return None
         result = json.loads(response.content)
-        return PullRequest(**result["data"]["repository"]["pullRequest"])
+        pr = PullRequest(**result["data"]["repository"]["pullRequest"])
+        has_next_page = True
+        cursor = ""
+        while has_next_page:
+            response = self._graph_ql(
+            f"""query {{
+repository(owner: "{self.username}", name: "{self.reponame}") {{
+    pullRequest(number: {number}) {{
+        files(first: 100{cursor}) {{
+            nodes {{
+                path
+            }}
+            endCursor
+            hasNextPage
+        }}
+    }}
+}}
+}}""",
+            )
+            if not status_is_ok(response.status_code):
+                logger.error(
+                    "Failed ({}) to get the files for pull request #{}",
+                    response.status_code,
+                    number,
+                )
+                return None
+            result = json.loads(response.content)
+            file_result = result["data"]["repository"]["pullRequest"]["files"]
+            pr.add_paths([
+                node["path"]
+                for node in file_result["nodes"]
+            ])
+            has_next_page = file_result["hasNextPage"]
+            cursor = f', after: {file_result["endCursor"]}'
+        return pr
 
     @property
     def issues(self):
