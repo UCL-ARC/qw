@@ -292,9 +292,15 @@ def get_remote_stages(service: Service) -> DesignStages:
                 issue.number,
             )
     for pr in service.pull_requests:
-        if "qw-ignore" in issue.labels:
+        if "qw-ignore" in pr.labels:
             logger.debug(
                 "PR {number} tagged to be ignored, skipping",
+                number=pr.number,
+            )
+            continue
+        if pr.changes_only_qw():
+            logger.debug(
+                "PR {number} only affects qw data, skipping",
                 number=pr.number,
             )
             continue

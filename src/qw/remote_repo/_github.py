@@ -84,6 +84,7 @@ class PullRequest(qw.remote_repo.service.PullRequest):
         self._number = number
         self._title = title
         self._closing_issues = kwargs.get("closingIssuesReferences", [])
+        self._paths = kwargs.get("files", [])
 
     @property
     def number(self) -> int:
@@ -116,6 +117,11 @@ class PullRequest(qw.remote_repo.service.PullRequest):
     def closing_issues(self) -> list[int]:
         """Get the list of ID numbers of closing issues for this PR."""
         return [ci["number"] for ci in self._closing_issues["nodes"]]
+
+    @property
+    def paths(self) -> list[str]:
+        """Get the list of paths of files changed in this PR."""
+        return [p["path"] for p in self._paths["nodes"]]
 
 
 LOWEST_HTTP_OK = 200
@@ -190,7 +196,7 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
         )
         if not status_is_ok(response.status_code):
             logger.info(
-                "Failed ({}) to get the closing numbers for issue {}",
+                "Failed ({}) to get the issue closing numbers for pull request #{}",
                 response.status_code,
                 number,
             )
@@ -226,6 +232,15 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
                     number
                 }}
             }}
+            files(first: 100) {{
+                nodes {{
+                    path
+                }}
+                pageInfo {{
+                    endCursor
+                    hasNextPage
+                }}
+            }}
             isDraft
             labels(last: 100) {{
                 nodes {{
@@ -258,8 +273,8 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
         """Check that the credentials can connect to the service."""
         try:
             logger.info(
-                "There are currently {issues} issues and PRs",
-                issues=len(self.issues),
+                "There are currently {count} issues and PRs",
+                count=len(self.issues) + len(self.pull_requests),
             )
         except ConnectionError as exception:
             msg = "Could not connect to Github, please check internet connection"
