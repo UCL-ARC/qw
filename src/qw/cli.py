@@ -256,7 +256,7 @@ def check(
         logger.error("Some checks failed:")
         for failure in result.failures:
             logger.error(failure)
-        typer.Exit(code=1)
+        raise typer.Exit(code=1)
     else:
         logger.success(
             "OK: Ran {} check(s) over {} object(s), all successful",
