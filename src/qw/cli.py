@@ -17,7 +17,11 @@ from rich.prompt import Prompt
 
 from qw._version import __version__
 from qw.base import QwError
-from qw.changes import ChangeHandler
+from qw.changes import (
+    ChangeHandler,
+    LocalChangeInteractive,
+    LocalChangeNone,
+)
 from qw.design_stages.checks import run_checks
 from qw.design_stages.main import (
     DESIGN_STAGE_CLASSES,
@@ -309,7 +313,11 @@ def freeze(
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)
     diff_elements = change_handler.diff_remote_and_local_items()
-    to_save = change_handler.get_local_items_from_diffs(diff_elements)
+    determiner = LocalChangeNone() if dry_run else LocalChangeInteractive()
+    to_save = change_handler.get_local_items_from_diffs(
+        diff_elements,
+        determiner,
+    )
     if dry_run:
         logger.info("Finished freeze (dry run)")
     else:
