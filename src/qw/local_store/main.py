@@ -2,15 +2,23 @@
 import os
 import pathlib
 import shutil
+from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from qw.base import QwError
 from qw.local_store._json import _dump_json, _load_json
-from qw.local_store._repository import RequirementComponents
+from qw.local_store._repository import (
+    FailingRequirementComponents,
+    QwDirRequirementComponents,
+)
 from qw.local_store.directories import find_git_base_dir
 from qw.remote_repo.service import GitService, Service
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class LocalStore:
@@ -18,21 +26,53 @@ class LocalStore:
 
     _config_file = "conf.json"
     _data_file = "store.json"
+    _release_template_dir = "qw_release_templates"
+
+    class ReleaseTemplateSet(Enum):
+        """
+        Sets of documents that can be automatically installed.
+
+        The idea is that we can have a set for each different standard
+        we want to conform to, plus others for management.
+        """
+
+        Basic = "basic"
 
     def __init__(self, base_dir: Path | None = None):
         """Find base dir if not defined."""
         self.base_dir = base_dir if base_dir else find_git_base_dir()
-
-        self.qw_dir = self.base_dir / ".qw"
-        self._requirement_component = RequirementComponents(self.qw_dir)
+        if self.base_dir is None:
+            self.qw_dir = None
+            self._requirement_component = FailingRequirementComponents(
+                "Qw has not been initialized, please run qw init",
+            )
+        else:
+            self.qw_dir = self.base_dir / ".qw"
+            self._requirement_component = QwDirRequirementComponents(
+                self.get_qw_dir(),
+            )
 
     @property
-    def _config_path(self):
+    def _config_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._config_file
 
     @property
-    def _data_path(self):
+    def _data_path(self) -> pathlib.Path:
+        if self.qw_dir is None:
+            msg = "qw is not initialized, please run qw init"
+            raise QwError(msg)
         return self.qw_dir / self._data_file
+
+    def get_qw_dir(self) -> pathlib.Path:
+        """Get the .qw directory path."""
+        r = self.qw_dir
+        if r is not None:
+            return r
+        msg = "We are not in a git project, so we cannot initialize!"
+        raise QwError(msg)
 
     def get_or_create_qw_dir(self, *, force: bool = False) -> pathlib.Path:
         """
@@ -41,24 +81,23 @@ class LocalStore:
         :param force: force re-initialisation.
         :return Path: qw directory
         """
+        qw_dir = self.get_qw_dir()
         logger.debug(".qw directory is '{dir}'", dir=self.qw_dir)
-        if self.qw_dir.is_file():
+        if qw_dir.is_file():
             msg = ".qw file exists, which is blocking us from making a .qw directory. Please delete it!"
             raise QwError(msg)
-        if not self.qw_dir.is_dir():
-            self.qw_dir.mkdir()
+        if not qw_dir.is_dir():
+            qw_dir.mkdir()
         elif not force:
             msg = ".qw directory already exists! Use existing configuration or use --force flag to reinitialize!"
             raise QwError(msg)
-        return self.qw_dir
+        return qw_dir
 
     def read_configuration(self) -> dict:
         """Get the configuration (as a dict) from the .qw/conf.json file."""
         if not self._config_path.is_file():
             msg = "Could not find a configuration directory, please initialize with `qw init`"
-            raise QwError(
-                msg,
-            )
+            raise QwError(msg)
         return _load_json(self._config_path)
 
     def read_local_data(self) -> list[dict]:
@@ -137,6 +176,29 @@ class LocalStore:
             else:
                 shutil.copy(source_path, target_path)
 
+    def write_release_document_templates(
+        self,
+        service: GitService,
+        template_set: ReleaseTemplateSet,
+        force: bool,  # noqa: FBT001
+    ):
+        """Copy release documentation templates into the repo."""
+
+        def copy_if_does_not_exist(src: str, dst: str):
+            if not Path(dst).exists():
+                shutil.copy2(src, dst)
+
+        copy_fn: Callable[[str, str], object] = shutil.copy2
+        if not force:
+            copy_fn = copy_if_does_not_exist
+        shutil.copytree(
+            service.qw_resources / "release_templates" / template_set.value,
+            self.base_dir / self._release_template_dir / template_set.value,
+            copy_function=copy_fn,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("__*"),
+        )
+
     def release_word_templates(self, out_dir=None):
         """
         Iterate through qw_release_templates/*.docx files.
@@ -147,7 +209,7 @@ class LocalStore:
         """
         if out_dir is None:
             out_dir = self.base_dir / "qw_release_out"
-        top = self.base_dir / "qw_release_templates"
+        top = self.base_dir / self._release_template_dir
         for dirpath, _dirnames, filenames in os.walk(top):
             out_path = out_dir / os.path.relpath(dirpath, top)
             for filename in filenames:

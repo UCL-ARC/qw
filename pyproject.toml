@@ -51,7 +51,7 @@ requires-python = ">=3.11"
 license.file = "LICENCE.md"
 
 [project.scripts]
-qw = "qw.cli:app"
+qw = "qw.cli:run_app"
 
 [project.urls]
 homepage = "https://github.com/UCL-ARC/qw"
@@ -109,6 +109,7 @@ twine = "^4.0.2"
 
 [tool.pytest.ini_options]
 addopts = "--color=yes -v"
+pythonpath = "src"
 testpaths = [
     "tests",
 ]

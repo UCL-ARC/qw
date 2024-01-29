@@ -16,10 +16,12 @@ from rich.prompt import Prompt
 
 from qw.base import QwError
 from qw.changes import ChangeHandler
+from qw.design_stages.checks import run_checks
 from qw.design_stages.main import (
     DESIGN_STAGE_CLASSES,
     get_design_stage_class_from_name,
     get_local_stages,
+    get_remote_stages,
 )
 from qw.local_store.keyring import get_qw_password, set_qw_password
 from qw.local_store.main import LocalStore
@@ -54,8 +56,9 @@ LOGLEVEL_TO_LOGURU = {
 store = LocalStore()
 
 
-def _build_and_check_service():
-    conf = store.read_configuration()
+def _build_and_check_service(conf: dict | None = None):
+    if conf is None:
+        conf = store.read_configuration()
     service = get_service(conf)
     service.check()
     typer.echo("Can connect to the remote repository 🎉")
@@ -154,24 +157,43 @@ def check(
     token: Annotated[
         Optional[str],
         typer.Option(
-            help="CI access token to use for checking, otherwise will use local config",
+            help="CI access token to use for checking.",
         ),
     ] = None,
     repository: Annotated[
         Optional[str],
         typer.Option(
-            help="Repository in form '${organisation}/${repository}'",
+            help="Repository URL (like https://github.com/me/repo or github.com:me/repo)",
         ),
     ] = None,
+    remote: Annotated[
+        bool,
+        typer.Option(
+            help="Use remote repository rather than local store (implied by --repository)",
+        ),
+    ] = False,
 ) -> None:
     """Check issue or pull request for any QW problems."""
+    kwargs = {}
     if token and repository:
         logger.info("Using CI access token for authorisation")
-    else:
-        logger.info(
-            "Using local qw config for authorisation because '--token' and '--repository' were not used",
+        (host, username, reponame) = remote_address_to_host_user_repo(repository)
+        servicename = hostname_to_service(host)
+        service = _build_and_check_service(
+            {
+                "user_name": username,
+                "repo_name": reponame,
+                "service": servicename,
+                "token": token,
+            },
         )
-        _build_and_check_service()
+        stages = get_remote_stages(service)
+    elif remote:
+        service = _build_and_check_service()
+        stages = get_remote_stages(service)
+    else:
+        logger.info("Using local qw config for authorisation.")
+        stages = get_local_stages(store)
     # currently dummy function as doesn't need real functionality for configuration
     if issue and review_request:
         QwError(
@@ -179,9 +201,27 @@ def check(
         )
     if not (issue or review_request):
         QwError("Nothing given to check, please add a issue or review_request to check")
-    logger.success(
-        "Checks complete, stdout will contain a checklist of any problems found",
-    )
+    if issue is not None:
+        kwargs["issues"] = {issue}
+    if review_request is not None:
+        kwargs["prs"] = {review_request}
+    result = run_checks(stages, **kwargs)
+    if result.failures:
+        logger.error(
+            "Ran {} check(s) over {} object(s)",
+            result.check_count,
+            result.object_count,
+        )
+        logger.error("Some checks failed:")
+        for failure in result.failures:
+            logger.error(failure)
+        typer.Exit(code=1)
+    else:
+        logger.success(
+            "OK: Ran {} check(s) over {} object(s), all successful",
+            result.check_count,
+            result.object_count,
+        )
 
 
 @app.command()
@@ -213,14 +253,27 @@ def login(
 
 
 @app.command()
-def freeze():
+def freeze(
+    dry_run: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--dry-run",
+            "-n",
+            help="Report differences but do not store the results.",
+        ),
+    ] = False,
+):
     """Freeze the state of remote design stages and update local store."""
     conf = store.read_configuration()
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)
-    to_save = change_handler.combine_local_and_remote_items()
-    store.write_local_data([x.to_dict() for x in to_save])
-    logger.info("Finished freeze")
+    diff_elements = change_handler.diff_remote_and_local_items()
+    if dry_run:
+        logger.info("Finished freeze (dry run)")
+    else:
+        to_save = change_handler.get_local_items_from_diffs(diff_elements)
+        store.write_local_data([x.to_dict() for x in to_save])
+        logger.info("Finished freeze")
 
 
 @app.command()
@@ -231,17 +284,50 @@ def configure(
             help="Replace existing configuration.",
         ),
     ] = False,
+    ci: Annotated[
+        Optional[bool],
+        typer.Option(
+            help=(
+                "Configure service's continuous integration"
+                " (default unless --release-templates is provided)"
+            ),
+        ),
+    ] = None,
+    release_templates: Annotated[
+        list[LocalStore.ReleaseTemplateSet],
+        typer.Option(
+            help=(
+                "Release file template sets to install in qw_release_templates"
+                " (and so be used by qw release)"
+            ),
+        ),
+        # Stop mypy, ruff and black from fighting each other.
+    ] = [],  # noqa: B006
 ):
     """Configure remote repository for qw (after initialisation and login credentials added)."""
     service = _build_and_check_service()
-    store.write_templates_and_ci(service, force=force)
-    typer.echo(
-        "Local repository updated, please commit the changes made to your local repository.",
-    )
-    service.update_remote(force=force)
-    typer.echo(
-        "Updated remote repository with rules",
-    )
+    if ci is None:
+        ci = not bool(release_templates)
+    done = False
+    if ci:
+        store.write_templates_and_ci(service, force=force)
+        done = True
+    for template_set in release_templates:
+        store.write_release_document_templates(
+            service,
+            template_set,
+            force=force,
+        )
+        done = True
+    if done:
+        typer.echo(
+            "Local repository updated, please commit the changes made to your local repository.",
+        )
+    if ci:
+        service.update_remote(force=force)
+        typer.echo(
+            "Updated remote repository with rules",
+        )
 
 
 @app.command()
@@ -325,10 +411,15 @@ def _get_merge_data() -> dict[str, list[dict[str, Any]]]:
     return data
 
 
-if __name__ == "__main__":
+def run_app():
+    """Run the app, reporting errors nicely."""
     try:
         app()
         sys.exit(0)
     except QwError as e:
         sys.stderr.write(str(e) + "\n")
         sys.exit(2)
+
+
+if __name__ == "__main__":
+    run_app()

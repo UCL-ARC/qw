@@ -6,6 +6,7 @@ from loguru import logger
 from qw.base import QwError
 from qw.design_stages._base import DesignBase
 from qw.design_stages.categories import DesignStage, RemoteItemType
+from qw.design_stages.checks import check
 from qw.local_store.main import LocalStore
 from qw.md import text_under_heading
 from qw.remote_repo.service import Issue, PullRequest, Service
@@ -14,8 +15,8 @@ from qw.remote_repo.service import Issue, PullRequest, Service
 class UserNeed(DesignBase):
     """User need."""
 
-    not_required_fields = frozenset(["requirement"])
     design_stage = DesignStage.NEED
+    plural = "user_needs"
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
@@ -35,8 +36,11 @@ class UserNeed(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description")
-        instance.requirement = text_under_heading(issue.body, "Requirements")
+        instance.description = text_under_heading(
+            issue.body,
+            "Description",
+            "no description",
+        )
         return instance
 
     @classmethod
@@ -58,8 +62,9 @@ class UserNeed(DesignBase):
 class Requirement(DesignBase):
     """Requirement Design stage."""
 
-    not_required_fields = frozenset(["user_need"])
+    not_required_fields = frozenset(["user_need", "req_type", "component"])
     design_stage = DesignStage.REQUIREMENT
+    plural = "requirements"
 
     def __init__(self) -> None:
         """Please use the from_markdown or from_dict methods instead of using this constructor."""
@@ -79,8 +84,20 @@ class Requirement(DesignBase):
 
         instance.title = issue.title
         instance.internal_id = issue.number
-        instance.description = text_under_heading(issue.body, "Description")
-        instance.user_need = text_under_heading(issue.body, "Parent user need")
+        instance.description = text_under_heading(
+            issue.body,
+            "Description",
+            "no description",
+        )
+        user_need = text_under_heading(issue.body, "Parent user need", "")
+        if len(user_need) != 0:
+            instance.user_need = user_need
+        req_type = text_under_heading(issue.body, "Type of requirement", "")
+        if len(req_type) != 0:
+            instance.req_type = req_type
+        component = text_under_heading(issue.body, "Component", "")
+        if len(component) != 0:
+            instance.component = component
         return instance
 
     @classmethod
@@ -106,11 +123,44 @@ class Requirement(DesignBase):
             return lambda d: internal_id in d.get("closing_issues", [])
         return None
 
+    @check(
+        "User need links have qw-user-need label",
+        "Requirement {0.internal_id} ({0.title}) has bad user need:",
+        fail_item="{} is not labelled with qw-user-need",
+    )
+    def user_need_is_labelled_as_such(self, user_needs, **_kwargs) -> list[str]:
+        """
+        Test if the linked User Needs are actually labelled as qw-user-need.
+
+        Design Outputs (PRs) have closing issues, and all these must refer
+        to issues with the qw-requirement label (or qw-ignore).
+        """
+        if isinstance(self.user_need, str) and self.user_need.startswith("#"):
+            un = self.user_need[1:]
+            if un.isnumeric() and int(un) not in user_needs:
+                return [self.user_need]
+        return []
+
+    @check(
+        "User Need links must exist",
+        "Requirement {0.internal_id} ({0.title}) has no user need:",
+    )
+    def user_need_must_exit(self, **_kwargs) -> bool:
+        """Test if the User Needs are actually links to Github issues."""
+        if (
+            isinstance(self.user_need, str)
+            and self.user_need.startswith("#")
+            and self.user_need[1:].isnumeric()
+        ):
+            return False
+        return True
+
 
 class DesignOutput(DesignBase):
     """Output Design Stage."""
 
     design_stage = DesignStage.OUTPUT
+    plural = "design_outputs"
 
     def __init__(self) -> None:
         """
@@ -148,6 +198,28 @@ class DesignOutput(DesignBase):
         logger.debug("Requirements are: {}", requirements)
         return lambda d: d.get("internal_id", None) in requirements
 
+    @check(
+        "Closing Issues are Requirements",
+        "Design Output {0.internal_id} ({0.title}) has bad closing issues:",
+        fail_item="{} is not a requirement",
+    )
+    def closing_issues_are_requirements(
+        self,
+        requirements: dict[int, Requirement],
+        **_kwargs,
+    ) -> list[int]:
+        """
+        Test that closing issues are all Requirements.
+
+        Design Outputs (PRs) have closing issues, and all these must refer
+        to issues with the qw-requirement label (or qw-ignore).
+        """
+        failed: list[int] = []
+        for req in self.closing_issues:
+            if req not in requirements:
+                failed.append(req)
+        return failed
+
 
 DESIGN_STAGE_CLASSES = DesignBase.__subclasses__()
 _DESIGN_STAGE_CLASS_FROM_NAME = {
@@ -162,7 +234,7 @@ def get_design_stage_class_from_name(name: str) -> type[DesignBase] | None:
     return None
 
 
-DesignStages = list[UserNeed | Requirement]
+DesignStages = list[UserNeed | Requirement | DesignOutput]
 
 
 def get_local_stages(local_store: LocalStore) -> DesignStages:
@@ -212,11 +284,19 @@ def get_remote_stages(service: Service) -> DesignStages:
                 number=issue.number,
             )
             continue
-        # Could have multiple design stages from the same pull request so allow multiple outputs from a single issue
+        # Could have multiple design stages from the same pull request
+        # so allow multiple outputs from a single issue
         if "qw-user-need" in issue.labels:
+            logger.debug("User Need #{}", issue.number)
             output_stages.append(UserNeed.from_issue(issue))
         elif "qw-requirement" in issue.labels:
+            logger.debug("Requirement #{}", issue.number)
             output_stages.append(Requirement.from_issue(issue))
+        else:
+            logger.debug(
+                "#{} is neither a User Need nor a Requirement",
+                issue.number,
+            )
     for pr in service.pull_requests:
         if "qw-ignore" in issue.labels:
             logger.debug(
@@ -225,4 +305,5 @@ def get_remote_stages(service: Service) -> DesignStages:
             )
             continue
         output_stages.append(DesignOutput.from_pr(pr))
+        logger.debug("PR #{} added", pr.number)
     return output_stages

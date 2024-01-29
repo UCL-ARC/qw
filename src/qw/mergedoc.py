@@ -1,6 +1,7 @@
 """Merges data into output documents."""
 import copy
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, TypeAlias
 
 import docx
@@ -370,6 +371,10 @@ class Document:
         self._interpolate_sections(
             self.top,
             MergeData(data, filter_referencers),
+        )
+        Path(output_file).parent.mkdir(
+            parents=True,
+            exist_ok=True,
         )
         self.docx.save(output_file)
 

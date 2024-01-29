@@ -19,9 +19,9 @@ def get_service(conf: dict | None = None) -> GitService:
         raise QwError(
             msg,
         )
-    if name == str(Service.GITHUB):
+    if str(name) == str(Service.GITHUB):
         return GitHubService(conf)
-    if name == str(Service.TEST):
+    if str(name) == str(Service.TEST):
         return FileSystemService(Path(conf["resource_base"]), "test")
 
     msg = f"Do not know how to connect to the {name} service!"

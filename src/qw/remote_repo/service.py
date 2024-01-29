@@ -5,6 +5,7 @@ Abstract Service (such as github or gitlab) in which
 the project managment interest resides.
 """
 
+import importlib.resources
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -13,6 +14,7 @@ from pathlib import Path
 
 import git
 
+import qw.resources
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
 
@@ -65,7 +67,7 @@ def splitstr(string, sep, count) -> tuple | None:
 
 def remote_address_to_host_user_repo(
     address: str,
-) -> tuple[str, str, str] | None:
+) -> tuple[str, str, str]:
     """
     Get (host, user, reponame) triple from the remote address.
 
@@ -77,16 +79,25 @@ def remote_address_to_host_user_repo(
     if bits is not None:
         host_user_repo = splitstr(bits[1], "/", 3)
         if host_user_repo is None:
-            return None
+            msg = f"Your remote address ({bits[1]}) must be user/repo"
+            raise QwError(msg)
         (host, user, repo_raw) = host_user_repo
     else:
         host_userrepo = splitstr(address, ":", 2)
         if host_userrepo is None:
-            return None
+            msg = (
+                f"Your remote address ({address}) must have a protocol"
+                " (such as https://) or be of the form host:user/repo."
+            )
+            raise QwError(msg)
         (host, userrepo) = host_userrepo
         user_repo = splitstr(userrepo, "/", 2)
         if user_repo is None:
-            return None
+            msg = (
+                f"Your remote address ({address}) must have a protocol"
+                " (such as https://) or be of the form host:user/repo."
+            )
+            raise QwError(msg)
         (user, repo_raw) = user_repo
     uh = splitstr(host, "@", 2)
     if uh is not None:
@@ -184,7 +195,7 @@ class GitService(ABC):
         self.conf = conf
         self.username = conf["user_name"]
         self.reponame = conf["repo_name"]
-        self.qw_resources = Path(__file__).parents[2] / "resources"
+        self.qw_resources = importlib.resources.files(qw.resources)
 
     @abstractmethod
     def get_issue(self, number: int) -> Issue:
@@ -211,8 +222,14 @@ class GitService(ABC):
 
     def relative_target_path(self, base_folder: str, resource_path: Path) -> Path:
         """Find the relative path that a resource should be copied to."""
-        return resource_path.relative_to(self.qw_resources / base_folder)
+        directory = self.qw_resources.joinpath(base_folder)
+        with importlib.resources.as_file(directory) as path:
+            return resource_path.relative_to(path)
 
     @abstractmethod
     def update_remote(self, *, force: bool) -> None:
         """Update remote repository with configration for qw tool."""
+
+    @abstractmethod
+    def check(self) -> bool:
+        """Check the connection to the service."""

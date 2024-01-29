@@ -140,6 +140,9 @@ class GitHubService(qw.remote_repo.service.GitService):
         self.gh = github3.login(token=token)
 
     def _get_token(self):
+        token = self.conf.get("token", None)
+        if token is not None:
+            return token
         return keyring.get_password("qw", f"{self.username}/{self.reponame}")
 
     def _graph_ql(self, query):
@@ -273,8 +276,69 @@ repository(owner: "{self.username}", name: "{self.reponame}") {{
         yaml = self.qw_resources.glob("templates/.github/**/*.yml*")
         return chain(markdown, yaml)
 
+    @property
+    def labels(self) -> list[str]:
+        """Get the labels defined in the repository."""
+        response = self._graph_ql(
+            f"""query {{
+repository(owner: "{self.username}", name: "{self.reponame}") {{
+    labels(last: 100) {{
+        totalCount
+        nodes {{ name }}
+    }}
+}}
+}}""",
+        )
+        if not status_is_ok(response.status_code):
+            msg = "Could not get existing labels from github"
+            raise QwError(msg)
+        result = json.loads(response.content)
+        nodes = result["data"]["repository"]["labels"]
+        if len(nodes["nodes"]) < nodes["totalCount"]:
+            logger.warning(
+                "Too many labels! Please contact the developers.",
+            )
+        return [label["name"] for label in nodes["nodes"]]
+
+    def add_labels(self, labels: list[dict[str, str]]):
+        """
+        Add more labels to the repository.
+
+        Keys in the names are:
+        - name: the name of the label, with no spaces
+        - description: verbose description
+        - color: 6 hex digits
+        """
+        current = set(self.labels)
+        for label in labels:
+            if label["name"] in current:
+                continue
+            url = self.gh.session.build_url(
+                "repos",
+                self.username,
+                self.reponame,
+                "labels",
+            )
+            response = self.gh.session.request(
+                "POST",
+                url,
+                json={
+                    "name": label["name"],
+                    "description": label["description"],
+                    "color": label["color"],
+                },
+            )
+            if self._is_valid_response(response):
+                logger.debug("Created label: {}", label["name"])
+            else:
+                self._throw_from_response(response)
+
     def update_remote(self, *, force: bool) -> None:
         """Update remote repository with configration for qw tool."""
+        with (self.qw_resources / "remote_repo" / "labels.json").open(
+            encoding="utf-8",
+        ) as h:
+            self.add_labels(json.load(h))
         # load configured ruleset as a python dict
         ruleset_template = self.qw_resources / "remote_repo/github/ruleset.json.jinja2"
         json_template = Template(ruleset_template.read_text())

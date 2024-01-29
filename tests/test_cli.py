@@ -3,7 +3,7 @@ import pytest
 from typer.testing import CliRunner
 
 from qw.cli import app
-from qw.local_store._repository import RequirementComponents
+from qw.local_store._repository import QwDirRequirementComponents
 
 runner = CliRunner()
 
@@ -131,7 +131,9 @@ def test_configure_adds_requirement_components(mocked_store):
         "name,short_code,description\n System ,X,Whole system requirements\n Fancy new component ,N,new requirements",
     )
     # re-initialise requirement component so it reads in new components file
-    mocked_store._requirement_component = RequirementComponents(mocked_store.qw_dir)
+    mocked_store._requirement_component = QwDirRequirementComponents(
+        mocked_store.qw_dir,
+    )
 
     result = runner.invoke(app, ["configure"])
 
