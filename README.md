@@ -15,6 +15,58 @@ These different stages are linked together using github or gitlab as part of the
 QW also will ensure that versioning of items are updated if their contents have changed,
 and notify when manual verification should be rerun due to changes in requirements or outputs.
 
+# Actual and Potential Features
+
+- [x] Manage project on hosted service
+  - [x] github.com
+  - [ ] gitlab anywhere
+- [x] Issues as regulated objects
+  - [x] User Needs
+  - [x] Requirements
+  - [ ] Hazardous Situation
+  - [ ] Risk Mitigation
+  - [ ] Anomaly (bug) template
+    - [ ] Risk analysis in comment
+- [x] Pull Requests as regulated objects
+  - [x] Design Objects
+  - [x] Automated workflow
+    - [x] Cannot merge without review
+    - [x] Cannot merge without traceability to User Needs
+    - [ ] User configurability of checks
+- [ ] Automated test gathering?
+  - [ ] Ensure automated tests pass before PR merge?
+- [ ] Extra information (in CSV files?)
+  - [ ] Manual test script description
+  - [ ] Manual test run results
+  - [ ] Risk class of each component
+  - [ ] Risk likelihood, impact, matrix
+  - [ ] Decision for each risk not entered as a Hazardous Situation issue
+- [x] Produce documents from data in repo and service
+  - [x] MS Word document
+  - [ ] Markdown document production
+  - [ ] Excel document production
+  - [x] "database file" production to allow users to make their own document templates with MS word or LibreOffice
+  - [ ] Built-in standards documents
+    - [ ] ISO13485
+    - [ ] DCB0129
+  - [x] Inserting data into documents
+    - [x] Data produces repeated, nested paragraphs
+    - [ ] Data produces repeated rows in tables
+    - [ ] Data produces charts
+  - [ ] Management documentation
+    - [ ] Burndown charts
+      - [ ] Or burnup charts
+      - [ ] Requirements satisfied with Design Object (PR)
+      - [ ] User Needs covered with Requirements
+      - [ ] User Needs satisfied with Design Objects
+      - [ ] Anomalies remaining in different risk categories
+    - [ ] Remaining items report
+      - [ ] Anomalies
+      - [ ] Requirements
+      - [ ] User Needs
+      - [ ] Risk decisions made/yet to be made
+      - [ ] Unmet risks
+
 # Setup
 
 ## Installation
@@ -37,6 +89,17 @@ Install from the source code directory:
 
 ```
 pipx install .
+```
+
+### Using conda
+
+After creating and activating your conda environment (with
+`conda create` and `conda activate`), install `qw` into
+that environment with:
+
+```
+conda install pip git
+pip install git+https://github.com/UCL-ARC/qw
 ```
 
 ### Using venv
