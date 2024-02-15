@@ -261,12 +261,11 @@ def check(
         for failure in result.failures:
             logger.error(failure)
         raise typer.Exit(code=1)
-    else:
-        logger.success(
-            "OK: Ran {} check(s) over {} object(s), all successful",
-            result.check_count,
-            result.object_count,
-        )
+    logger.success(
+        "OK: Ran {} check(s) over {} object(s), all successful",
+        result.check_count,
+        result.object_count,
+    )
 
 
 @app.command()
