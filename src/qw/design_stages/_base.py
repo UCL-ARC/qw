@@ -1,4 +1,5 @@
 """Base class for design stages."""
+import re
 from abc import ABC
 from collections.abc import Callable
 from copy import copy
@@ -17,6 +18,8 @@ class DesignBase(ABC):
         ["title", "description", "internal_id", "version"],
     )
     design_stage: DesignStage | None = None
+
+    LINK_RE = re.compile(r"#(\d+)")
 
     def __init__(self) -> None:
         """Shared fields for all design stage classes."""
@@ -39,6 +42,12 @@ class DesignBase(ABC):
             if not value:
                 msg = f"No {field} in {self.__class__.__name__}"
                 raise QwError(msg)
+
+    def get_links_from_text(self, text) -> list[int]:
+        """Get #IDs contained in text."""
+        if text is None:
+            return []
+        return [int(match) for match in self.LINK_RE.findall(text)]
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -95,7 +104,7 @@ class DesignBase(ABC):
         """
         Compare the data of each field with another instance,  returning the fields with differences only.
 
-        Ignores the version as this is only stored locally.
+        Ignores the version number and deleted flag as these are only stored locally.
 
         :param other: Another instance of the same class
         :raises ValueError: if other is not the same class as self.
@@ -107,7 +116,7 @@ class DesignBase(ABC):
 
         output_fields = {}
         for field_name in self.__dict__:
-            if field_name == "version":
+            if field_name in ["version", "deleted"]:
                 continue
             self_data = getattr(self, field_name)
             other_data = getattr(other, field_name)
@@ -117,3 +126,9 @@ class DesignBase(ABC):
                 output_fields[field_name]["other"] = str(other_data)
 
         return output_fields
+
+    def mark_as_deleted(self):
+        self.deleted = True
+
+    def is_marked_deleted(self):
+        return hasattr(self, "deleted") and self.deleted

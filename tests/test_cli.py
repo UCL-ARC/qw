@@ -105,10 +105,10 @@ def test_configure_adds_templates(mocked_store):
     """
     Given no templates exist in git root (tmpdir).
 
-    When `qw configure` is run
+    When `qw configure --workflow` is run
     Then templates should be copied and the cli should exit without error
     """
-    result = runner.invoke(app, ["configure"])
+    result = runner.invoke(app, ["configure", "--workflow"])
 
     requirements_template = (
         mocked_store.base_dir / ".github" / "ISSUE_TEMPLATE" / "requirement.yml"
@@ -123,7 +123,7 @@ def test_configure_adds_requirement_components(mocked_store):
     """
     Given no templates exist in git root (tmpdir) and custom components with leading and trailing whitespace.
 
-    When `qw configure` is run
+    When `qw configure --workflow` is run
     Then requirement template should have the component names in the dropdown, without the whitespace.
     """
     components_file = mocked_store.qw_dir / "components.csv"
@@ -135,7 +135,7 @@ def test_configure_adds_requirement_components(mocked_store):
         mocked_store.qw_dir,
     )
 
-    result = runner.invoke(app, ["configure"])
+    result = runner.invoke(app, ["configure", "--workflow"])
 
     bullet_point = "        - "
     component_options = (
@@ -161,9 +161,9 @@ def test_configure_throws_if_templates_exist(mocked_store):
     existing_file.parent.mkdir(parents=True)
     existing_file.write_text("Now I exist.")
 
-    result = runner.invoke(app, ["configure"])
+    result = runner.invoke(app, ["configure", "--workflow"])
 
-    assert "Templates already exists" in " ".join(result.exception.args)
+    assert "Templates already exist" in " ".join(result.exception.args)
     assert str(existing_file) in " ".join(result.exception.args)
     assert result.exit_code != 0
     assert not (mocked_store.base_dir / ".github" / "PULL_REQUEST_TEMPLATE.md").exists()
@@ -173,7 +173,7 @@ def test_configure_force_templates_exist(mocked_store):
     """
     Given the pull request template exists already.
 
-    When `qw configure --force` is run
+    When `qw configure --force --workflow` is run
     Then an exception should be thrown and the other templates should not exist
     """
     existing_file = (
@@ -182,7 +182,7 @@ def test_configure_force_templates_exist(mocked_store):
     existing_file.parent.mkdir(parents=True)
     existing_file.write_text("Now I exist.")
 
-    result = runner.invoke(app, ["configure", "--force"])
+    result = runner.invoke(app, ["configure", "--force", "--workflow"])
 
     assert (mocked_store.base_dir / ".github" / "PULL_REQUEST_TEMPLATE.md").exists()
     assert result.exit_code == 0

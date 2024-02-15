@@ -15,6 +15,58 @@ These different stages are linked together using github or gitlab as part of the
 QW also will ensure that versioning of items are updated if their contents have changed,
 and notify when manual verification should be rerun due to changes in requirements or outputs.
 
+# Actual and Potential Features
+
+- [x] Manage project on hosted service
+  - [x] github.com
+  - [ ] gitlab anywhere
+- [x] Issues as regulated objects
+  - [x] User Needs
+  - [x] Requirements
+  - [ ] Hazardous Situation
+  - [ ] Risk Mitigation
+  - [ ] Anomaly (bug) template
+    - [ ] Risk analysis in comment
+- [x] Pull Requests as regulated objects
+  - [x] Design Objects
+  - [x] Automated workflow
+    - [x] Cannot merge without review
+    - [x] Cannot merge without traceability to User Needs
+    - [ ] User configurability of checks
+- [ ] Automated test gathering?
+  - [ ] Ensure automated tests pass before PR merge?
+- [ ] Extra information (in CSV files?)
+  - [ ] Manual test script description
+  - [ ] Manual test run results
+  - [ ] Risk class of each component
+  - [ ] Risk likelihood, impact, matrix
+  - [ ] Decision for each risk not entered as a Hazardous Situation issue
+- [x] Produce documents from data in repo and service
+  - [x] MS Word document
+  - [ ] Markdown document production
+  - [ ] Excel document production
+  - [x] "database file" production to allow users to make their own document templates with MS word or LibreOffice
+  - [ ] Built-in standards documents
+    - [ ] ISO13485
+    - [ ] DCB0129
+  - [x] Inserting data into documents
+    - [x] Data produces repeated, nested paragraphs
+    - [ ] Data produces repeated rows in tables
+    - [ ] Data produces charts
+  - [ ] Management documentation
+    - [ ] Burndown charts
+      - [ ] Or burnup charts
+      - [ ] Requirements satisfied with Design Object (PR)
+      - [ ] User Needs covered with Requirements
+      - [ ] User Needs satisfied with Design Objects
+      - [ ] Anomalies remaining in different risk categories
+    - [ ] Remaining items report
+      - [ ] Anomalies
+      - [ ] Requirements
+      - [ ] User Needs
+      - [ ] Risk decisions made/yet to be made
+      - [ ] Unmet risks
+
 # Setup
 
 ## Installation
@@ -37,6 +89,17 @@ Install from the source code directory:
 
 ```
 pipx install .
+```
+
+### Using conda
+
+After creating and activating your conda environment (with
+`conda create` and `conda activate`), install `qw` into
+that environment with:
+
+```
+conda install pip git
+pip install git+https://github.com/UCL-ARC/qw
 ```
 
 ### Using venv
@@ -89,7 +152,8 @@ adding extra branches to the ruleset (e.g. `develop`)
 
 You can omit `--service github` if the repo is at `github.com` (as in
 this case) and you can omit `--repo <url>` if you have the desired
-repository configured as the git remote named `upstream`.
+repository configured as the git remote named `upstream` (or `origin`
+if you have no `upstream` remote set).
 
 #### Setup Personal Access Token
 
@@ -143,13 +207,6 @@ to [add the personal access token](#setup-personal-access-token)
 
 ### Customising configuration for identifiers
 
-QW creates identifiers for User Needs and Requirements.
-
-| Design stage | format                                              | example      |
-| ------------ | --------------------------------------------------- | ------------ |
-| User Need    | `URS-U${user need number}`                          | URS-U001     |
-| Requirement  | `REQ-${component short code}-${requirement number}` | REQ-SWR-0001 |
-
 QW initialises with a `System` component for requirements (used for generating a unique identifier, short code value is `X`).
 You can add extra components to the configuration by editing the `/.qw/components.csv`
 
@@ -159,21 +216,22 @@ System,X,Whole system requirements.
 Drug dosage,D,Drug dosage calculation module.
 ```
 
+You set up the workflow files and the release templates files like this:
+
 ```shell
-qw configure
+qw configure --workflow
+qw configure --release-templates basic
 ```
 
-> INFO: there are currently 27 issues and PRs
->
-> Can connect to remote repository :tada:
->
-> INFO: Writing templates to local repository, force=False
->
-> Local repository updated, please commit the changes made to your local repository.
+At the moment `basic` is the only option for release templates at the moment.
+In the future we should have options such as `iso13485`, `dbc0129` and
+`management` to allow you to produce regulatory documents and management
+documents without having to build them yourself.
 
 ## Configuration using Gitlab
 
-Intentionally left blank at the moment for brevity. Will aim for being able to implement this.
+Gitlab is not supported yet. When it is, it will work both on gitlab.com and on
+instances hosted elsewhere.
 
 # Using QW with github
 
@@ -270,6 +328,8 @@ QW uses existing issues and pull requests to track the different design and deve
 
 ## Closing QW items when they are not resolved by a PR
 
+**Note**: this functionality has not yet been completed.
+
 - There may be times when a QW-tracked issue is required to be closed not by a PR.
 - You may close the issue as either `completed` or `not planned` ![](https://hackmd.io/_uploads/Sy22Bi9x6.png)
 - Then please add another section to QW information in the issue in the form:
@@ -287,6 +347,28 @@ QW uses existing issues and pull requests to track the different design and deve
 
   Duplicate of #5
   ```
+
+## Checking QW items for consistency
+
+You can check that all the closing issues of all PRs (not marked with
+`qw-ignore`) are requirements, that all Requirements have User Needs
+links and that all these User Needs links are marked with `qw-user-need`:
+
+```sh
+qw check --remote
+```
+
+There are clearly many more checks that we could run in this stage.
+
+The `--remote` flag tells `qw` to examine the PRs and issues as they
+currently exist on the server. The alternative is:
+
+```sh
+qw check --local
+```
+
+This checks the PRs and issues as they were gathered by the last
+invocation of the `qw freeze` command, described next.
 
 ## Versioning of QW items
 
@@ -347,29 +429,60 @@ Example response when the change is trivial and does not warrant a change in the
 ### Creating a documentation release
 
 When you're ready to update the documentation in your Quality Management System (QMS), you can use the QW tool's `release` command.
-Running this will:
-
-- Ensure that all issues and pull requests have been marked with `qw-ignore` or one of the `qw-` item tags, raising an error (and stopping) to ensure
-  all items are tagged
-- Ensure that all QW items have versions
-- Ensure the entire chain `design validation -> design verification -> design output -> requirement -> user need` is consistent with QW rules,
-  starting from the furthest stage of QW items. So if there is no `design validation`, then the chain will start from `design verification`. If there
-  was only a `user need` and `requirement`s, then only these would be validated
-- Create word documents based on the QW template for export
-- [name=Stef] Optionally? Create an html page that shows a burndown graph for each of the QW item types, showing the number completed and outstanding
-  over time. Would this be useful?
+Running this will create word documents based on the QW template for export
 
 ```shell
-qw release qms_docs
+qw release
 ```
 
-> Creating a release for QW
->
-> Creating "qms_docs" directory if it doesn't already exist, and overwriting any previously exported files
->
-> INFO: :heavy_check_mark: 47 QW items checked
->
-> INFO: :heavy_check_mark: Documents have been written to the "qms_docs" directory
+This turns the files in the `qw_release_templates` directory into the same
+named files (within the same named subdirectories) into correctly filled-in
+documents in the `qw_release_out` directory. Any paragraphs containing
+mailmerge fields will be repeated however many times they need to be to
+be filled in with all the data qw knows about. Also, dependent paragraphs
+below those repeated paragraphs (at "higher" outline level) will be repeated.
+The mailmerge fields in these dependent paragraphs will be filled with
+dependent data from qw.
+
+If you want to write your own document template, or update them, you
+need to be able to add these mailmerge fields to your document. For this
+you need a "database file". Get that from the `qw generate-merge-fields`
+command. This produces a file called `fields.csv`.
+
+What do we do with this `fields.csv` file? In MS Word you choose
+"Select Recipients|Use Existing List..." from the "Mailings" ribbon, then
+select the `fields.csv` file. Now the "Insert Merge Field" button lets you
+add fields. In LibreOffice you select "Insert|Field|More Fields...". In the
+dialog that pops up, select the "Database" tab, highlight the "Mail Merge
+Fields" type. In the "Add database file" box click the "Browse..." button
+and select the `fields.csv` file. Now the fields appear in the right hand
+box. You can select the one you want and click "Insert". You can keep
+the dialog open as you type if you like.
+
+Now, as long as you save this new file within the `qw_release_templates`
+directory, `qw release` will fill in your document and output the result to the
+`qw_release_out` directory.
+
+You probably want to add `qw_release_out` to your `.gitignore` file,
+especially if you are adding the documents inside it to some other QMS tool.
+
+## Tab completion of commands
+
+You can use tab to complete the subcommands of `qw`, for example you can type
+`qw gen` then press tab, and `qw generate-merge-fields` will appear, but only
+if you have installed the tab completions. Do this with the following on Windows:
+
+```sh
+qw --install-completion powershell
+```
+
+to get tab completion in PowerShell. Similarly on Linux, Mac or WSL use:
+
+```sh
+qw --install-completion bash
+```
+
+or use the `zsh` or `fish` options if you use those shells.
 
 # FAQ and common issues
 

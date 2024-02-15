@@ -175,6 +175,8 @@ class Issue(ABC):
 class PullRequest(Issue):
     """Pull Request."""
 
+    _QW_DATA_RE = re.compile(r"^(.qw|qw_release_templates)/")
+
     @property
     @abstractmethod
     def closing_issues(self) -> list[int]:
@@ -185,6 +187,16 @@ class PullRequest(Issue):
         REQUEST from their item_type method.
         """
         ...
+
+    @property
+    @abstractmethod
+    def paths(self) -> list[str]:
+        """Get the list of paths of files changed by this PR."""
+        ...
+
+    def changes_only_qw(self) -> bool:
+        """Return True if only qw data is affected by this PR."""
+        return all(self._QW_DATA_RE.match(p) for p in self.paths)
 
 
 class GitService(ABC):

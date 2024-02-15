@@ -123,6 +123,10 @@ class Requirement(DesignBase):
             return lambda d: internal_id in d.get("closing_issues", [])
         return None
 
+    def user_need_links(self) -> list[int]:
+        """Get IDs of user needs linked to."""
+        return self.get_links_from_text(self.user_need)
+
     @check(
         "User need links have qw-user-need label",
         "Requirement {0.internal_id} ({0.title}) has bad user need:",
@@ -135,25 +139,15 @@ class Requirement(DesignBase):
         Design Outputs (PRs) have closing issues, and all these must refer
         to issues with the qw-requirement label (or qw-ignore).
         """
-        if isinstance(self.user_need, str) and self.user_need.startswith("#"):
-            un = self.user_need[1:]
-            if un.isnumeric() and int(un) not in user_needs:
-                return [self.user_need]
-        return []
+        return [str(un) for un in self.user_need_links() if un not in user_needs]
 
     @check(
         "User Need links must exist",
-        "Requirement {0.internal_id} ({0.title}) has no user need:",
+        "Requirement {0.internal_id} ({0.title}) has no user need.",
     )
     def user_need_must_exit(self, **_kwargs) -> bool:
-        """Test if the User Needs are actually links to Github issues."""
-        if (
-            isinstance(self.user_need, str)
-            and self.user_need.startswith("#")
-            and self.user_need[1:].isnumeric()
-        ):
-            return False
-        return True
+        """Test that there is at least one User Need link."""
+        return len(self.user_need_links()) == 0
 
 
 class DesignOutput(DesignBase):
@@ -298,9 +292,15 @@ def get_remote_stages(service: Service) -> DesignStages:
                 issue.number,
             )
     for pr in service.pull_requests:
-        if "qw-ignore" in issue.labels:
+        if "qw-ignore" in pr.labels:
             logger.debug(
                 "PR {number} tagged to be ignored, skipping",
+                number=pr.number,
+            )
+            continue
+        if pr.changes_only_qw():
+            logger.debug(
+                "PR {number} only affects qw data, skipping",
                 number=pr.number,
             )
             continue

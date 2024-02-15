@@ -12,10 +12,16 @@ from typing import Annotated, Any, Optional
 import git
 import typer
 from loguru import logger
+from rich.console import Console
 from rich.prompt import Prompt
 
+from qw._version import __version__
 from qw.base import QwError
-from qw.changes import ChangeHandler
+from qw.changes import (
+    ChangeHandler,
+    LocalChangeInteractive,
+    LocalChangeNone,
+)
 from qw.design_stages.checks import run_checks
 from qw.design_stages.main import (
     DESIGN_STAGE_CLASSES,
@@ -45,6 +51,14 @@ class LogLevel(str, Enum):
     INFO = "info"
     DEBUG = "debug"
 
+    def __str__(self):
+        """
+        Return the value.
+
+        This makes Typer print the correct thing as a default value.
+        """
+        return self.value
+
 
 LOGLEVEL_TO_LOGURU = {
     LogLevel.DEBUG: 10,
@@ -65,8 +79,24 @@ def _build_and_check_service(conf: dict | None = None):
     return service
 
 
+def version_callback(value):
+    """Print the version and exit."""
+    if value:
+        Console().print(f"qw version: [cyan]{__version__}[/]", highlight=False)
+        raise typer.Exit
+
+
 @app.callback()
 def main(
+    _version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            help="Print the version and exit",
+            callback=version_callback,
+            is_eager=True,
+        ),
+    ] = None,
     loglevel: Annotated[
         LogLevel,
         typer.Option(
@@ -145,31 +175,46 @@ def check(
     issue: Annotated[
         Optional[int],
         typer.Option(
-            help="Issue number to check",
+            help="Issue number to check (default is all of them)",
+            show_default=False,
         ),
     ] = None,
     review_request: Annotated[
         Optional[int],
         typer.Option(
-            help="Review request number to check",
+            help="Review request number to check (default is all of them)",
+            show_default=False,
         ),
     ] = None,
     token: Annotated[
         Optional[str],
         typer.Option(
-            help="CI access token to use for checking.",
+            help=(
+                "CI access token to use for checking, if not run from a"
+                " git repository."
+            ),
+            show_default=False,
         ),
     ] = None,
     repository: Annotated[
         Optional[str],
         typer.Option(
-            help="Repository URL (like https://github.com/me/repo or github.com:me/repo)",
+            help=(
+                "Repository URL (like https://github.com/me/repo or"
+                " github.com:me/repo) if not run from a git repository."
+            ),
+            show_default=False,
         ),
     ] = None,
     remote: Annotated[
         bool,
         typer.Option(
-            help="Use remote repository rather than local store (implied by --repository)",
+            "--remote/--local",
+            help=(
+                "Use remote repository or local store (default is --remote"
+                " if --repository is supplied or --local otherwise)"
+            ),
+            show_default=False,
         ),
     ] = False,
 ) -> None:
@@ -215,13 +260,12 @@ def check(
         logger.error("Some checks failed:")
         for failure in result.failures:
             logger.error(failure)
-        typer.Exit(code=1)
-    else:
-        logger.success(
-            "OK: Ran {} check(s) over {} object(s), all successful",
-            result.check_count,
-            result.object_count,
-        )
+        raise typer.Exit(code=1)
+    logger.success(
+        "OK: Ran {} check(s) over {} object(s), all successful",
+        result.check_count,
+        result.object_count,
+    )
 
 
 @app.command()
@@ -268,10 +312,14 @@ def freeze(
     service = get_service(conf)
     change_handler = ChangeHandler(service, store)
     diff_elements = change_handler.diff_remote_and_local_items()
+    determiner = LocalChangeNone() if dry_run else LocalChangeInteractive()
+    to_save = change_handler.get_local_items_from_diffs(
+        diff_elements,
+        determiner,
+    )
     if dry_run:
         logger.info("Finished freeze (dry run)")
     else:
-        to_save = change_handler.get_local_items_from_diffs(diff_elements)
         store.write_local_data([x.to_dict() for x in to_save])
         logger.info("Finished freeze")
 
@@ -281,18 +329,30 @@ def configure(
     force: Annotated[
         Optional[bool],
         typer.Option(
+            "--force",
             help="Replace existing configuration.",
+            show_default=False,
         ),
     ] = False,
-    ci: Annotated[
+    rules: Annotated[
         Optional[bool],
         typer.Option(
+            "--rules",
             help=(
-                "Configure service's continuous integration"
-                " (default unless --release-templates is provided)"
+                "Configure service's branch rules"
+                " (Note: this will prevent pushes to the default branch!)"
             ),
+            show_default=False,
         ),
-    ] = None,
+    ] = False,
+    workflow: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--workflow",
+            help="Creates workflows, issue templates and PR templates.",
+            show_default=False,
+        ),
+    ] = False,
     release_templates: Annotated[
         list[LocalStore.ReleaseTemplateSet],
         typer.Option(
@@ -300,34 +360,41 @@ def configure(
                 "Release file template sets to install in qw_release_templates"
                 " (and so be used by qw release)"
             ),
+            show_default=False,
         ),
         # Stop mypy, ruff and black from fighting each other.
     ] = [],  # noqa: B006
 ):
     """Configure remote repository for qw (after initialisation and login credentials added)."""
+    if not (rules or workflow or release_templates):
+        typer.echo(
+            "Nothing to do. Please provide at least one option from"
+            " --service-templates, --release-templates, or --ci",
+        )
+        return 0
     service = _build_and_check_service()
-    if ci is None:
-        ci = not bool(release_templates)
-    done = False
-    if ci:
+    repo_updated = False
+    if workflow:
         store.write_templates_and_ci(service, force=force)
-        done = True
+        repo_updated = True
     for template_set in release_templates:
         store.write_release_document_templates(
             service,
             template_set,
             force=force,
         )
-        done = True
-    if done:
+        repo_updated = True
+    if repo_updated:
         typer.echo(
             "Local repository updated, please commit the changes made to your local repository.",
         )
-    if ci:
+    if rules:
         service.update_remote(force=force)
         typer.echo(
             "Updated remote repository with rules",
         )
+        return None
+    return None
 
 
 @app.command()
