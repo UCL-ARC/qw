@@ -32,7 +32,7 @@ and notify when manual verification should be rerun due to changes in requiremen
   - [x] Automated workflow
     - [x] Cannot merge without review
     - [x] Cannot merge without traceability to User Needs
-    - [ ] User configurability of checks
+    - [x] User configurability of checks
 - [ ] Automated test gathering?
   - [ ] Ensure automated tests pass before PR merge?
 - [ ] Extra information (in CSV files?)
