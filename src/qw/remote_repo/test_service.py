@@ -1,4 +1,5 @@
 """Mock service functionality to allow reading from local filesystem in tests rather than hitting APIs constantly."""
+import re
 from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
@@ -7,6 +8,7 @@ import frontmatter
 
 from qw.base import QwError
 from qw.design_stages.categories import RemoteItemType
+from qw.md import text_under_heading
 from qw.remote_repo.service import GitService, Issue, PullRequest
 
 
@@ -56,6 +58,17 @@ class FileSystemPullRequest(PullRequest, FileSystemIssue):
     def item_type(self) -> RemoteItemType:
         """Report that this is a request."""
         return RemoteItemType.REQUEST
+
+    @property
+    def closing_issues(self) -> list[int]:
+        """Closing issues are derived from finding "closes #<num>" in the content."""
+        return [int(g) for g in re.findall(r"(?:Closes|closes)\s+#(\d+)", self.body)]
+
+    @property
+    def paths(self) -> list[str]:
+        """Returns all nonblank lines after "### Paths" in the body."""
+        text = text_under_heading(self.body, "Paths")
+        return [line for line in re.split(r"\n+", text) if line]
 
 
 def build_file_system_issue(filepath):
