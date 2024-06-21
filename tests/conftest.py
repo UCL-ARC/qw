@@ -5,11 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from qw.design_stages.main import get_remote_stages
 from qw.local_store.main import LocalStore
+from qw.remote_repo.test_service import FileSystemService
 
 
 @pytest.fixture()
-def empty_local_store(tmp_path_factory: pytest.TempPathFactory) -> LocalStore:
+def empty_local_store(
+    request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> LocalStore:
     """Create tmp dir with .qw child dir, returning a local store instance."""
     repo_dir = tmp_path_factory.mktemp("fake_repo")
     store = LocalStore(repo_dir)
@@ -21,6 +26,8 @@ def empty_local_store(tmp_path_factory: pytest.TempPathFactory) -> LocalStore:
         "service": "Service.TEST",
         "resource_base": str(Path(__file__).parent / "resources" / "design_stages"),
     }
+    if hasattr(request, "param"):
+        config_data.update(request.param)
     config_path = qw_dir / "conf.json"
     with config_path.open("w") as handler:
         json.dump(config_data, handler)
@@ -52,3 +59,23 @@ def mock_user_input(monkeypatch):
         monkeypatch.setattr("builtins.input", lambda: next(answers))
 
     return _take_input
+
+
+@pytest.fixture()
+def test_design_stages(request) -> list[dict]:
+    """
+    Read test resource in test resource directory.
+
+    Useful for writing to tmp filesystem using qw_store_builder.
+
+    :return: list of dicts, each representing a design stage
+    """
+    requirement_test_dir = (
+        request.param if hasattr(request, "param") else "single_requirement"
+    )
+    service = FileSystemService(
+        Path(__file__).parent / "resources" / "design_stages",
+        requirement_test_dir,
+    )
+    stages = get_remote_stages(service)
+    return [x.to_dict() for x in stages]

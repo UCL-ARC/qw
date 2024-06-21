@@ -22,7 +22,13 @@ from qw.changes import (
     LocalChangeInteractive,
     LocalChangeNone,
 )
-from qw.design_stages.checks import run_checks
+from qw.design_stages._base import DesignBase
+from qw.design_stages.checks import (
+    CheckImpact,
+    CheckResult,
+    get_check_titles,
+    run_checks,
+)
 from qw.design_stages.main import (
     DESIGN_STAGE_CLASSES,
     get_design_stage_class_from_name,
@@ -170,6 +176,42 @@ def init(
     store.initialise_qw_files(repo, reponame, service, username)
 
 
+def get_check_impact_configuration(local_store: LocalStore) -> dict[str, CheckImpact]:
+    """Read .qw/conf.json and extract the 'checks' property."""
+    conf = local_store.read_configuration()
+    title_set = set(get_check_titles())
+    impacts = {}
+    for check_title, impact_name in conf.get("checks", {}).items():
+        ok = True
+        try:
+            CheckImpact(impact_name)
+        except ValueError:
+            logger.warning(
+                "Check '{0}' in .qw/conf.json has an invalid value '{1}'",
+                check_title,
+                impact_name,
+            )
+            ok = False
+        if check_title not in title_set:
+            logger.warning(
+                "Check '{0}' in .qw/conf.json does not reference a known check",
+                check_title,
+            )
+        elif ok:
+            impacts[check_title] = impact_name
+    return impacts
+
+
+def run_checks_with_impacts(
+    local_store: LocalStore,
+    stages: list[type[DesignBase]],
+    **_kwargs,
+) -> CheckResult:
+    """Run all the checks over `stages`, taking the impact configuration from `local_store`."""
+    impacts = get_check_impact_configuration(local_store)
+    return run_checks(stages, impacts=impacts, **_kwargs)
+
+
 @app.command()
 def check(
     issue: Annotated[
@@ -250,22 +292,32 @@ def check(
         kwargs["issues"] = {issue}
     if review_request is not None:
         kwargs["prs"] = {review_request}
-    result = run_checks(stages, **kwargs)
-    if result.failures:
-        logger.error(
-            "Ran {} check(s) over {} object(s)",
+    result = run_checks_with_impacts(
+        store,
+        stages,
+        **kwargs,
+    )
+    if not result.errors and not result.warnings:
+        logger.success(
+            "OK: Ran {} check(s) over {} object(s), all successful",
             result.check_count,
             result.object_count,
         )
-        logger.error("Some checks failed:")
-        for failure in result.failures:
-            logger.error(failure)
-        raise typer.Exit(code=1)
-    logger.success(
-        "OK: Ran {} check(s) over {} object(s), all successful",
+        return
+    logger.warning(
+        "Ran {} check(s) over {} object(s)",
         result.check_count,
         result.object_count,
     )
+    if result.warnings:
+        logger.warning("Warnings:")
+        for warning in result.warnings:
+            logger.warning(warning)
+    if result.errors:
+        logger.error("Errors:")
+        for error in result.errors:
+            logger.error(error)
+        raise typer.Exit(code=1)
 
 
 @app.command()

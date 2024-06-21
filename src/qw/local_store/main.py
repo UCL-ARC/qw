@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from qw.base import QwError
+from qw.design_stages.checks import get_check_titles
 from qw.local_store._json import _dump_json, _load_json
 from qw.local_store._repository import (
     FailingRequirementComponents,
@@ -118,6 +119,9 @@ class LocalStore:
         self._write_config_file(repo, reponame, service, username)
         self._requirement_component.write_initial_data_if_not_exists()
 
+    def _get_default_check_impacts(self):
+        return {title: "error" for title in get_check_titles()}
+
     def _write_config_file(self, repo, reponame, service, username):
         """Write configuration to qw config file."""
         logger.debug(
@@ -131,6 +135,7 @@ class LocalStore:
             "repo_name": reponame,
             "user_name": username,
             "service": str(service),
+            "checks": self._get_default_check_impacts(),
         }
         _dump_json(conf, self._config_path)
 

@@ -32,7 +32,7 @@ and notify when manual verification should be rerun due to changes in requiremen
   - [x] Automated workflow
     - [x] Cannot merge without review
     - [x] Cannot merge without traceability to User Needs
-    - [ ] User configurability of checks
+    - [x] User configurability of checks
 - [ ] Automated test gathering?
   - [ ] Ensure automated tests pass before PR merge?
 - [ ] Extra information (in CSV files?)
@@ -227,6 +227,41 @@ At the moment `basic` is the only option for release templates at the moment.
 In the future we should have options such as `iso13485`, `dbc0129` and
 `management` to allow you to produce regulatory documents and management
 documents without having to build them yourself.
+
+### Customization of checks
+
+By default, `qw check` and the checks installed for gating PRs will fail if any check fails.
+This can be customized by editing `.qw\conf.json`. Look for the `"checks"` property,
+which looks something like this:
+
+```json
+{
+  "checks": {
+    "User need links have qw-user-need label": "error",
+    "User Need links must exist": "error",
+    "Closing Issues are Requirements": "error"
+  }
+}
+```
+
+You can turn behaviours off by changing `"error"` to `"off"`, or keep the
+check reporting but not preventing PRs from merging by changing `"error"`
+to `"warning"`:
+
+```json
+{
+  "checks": {
+    "User need links have qw-user-need label": "warning",
+    "User Need links must exist": "error",
+    "Closing Issues are Requirements": "off"
+  }
+}
+```
+
+If this change appears as part of a PR, the change will affect the workflow
+action gating this PR. For example, if your PR is failing checks, you can
+simply turn them off to get your PR through! It is currently up to the
+reviewer to make sure that this is not being abused!
 
 ## Configuration using Gitlab
 
